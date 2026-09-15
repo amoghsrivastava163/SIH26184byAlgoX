@@ -1,0 +1,1013 @@
+/* =========================================================
+   CYBERCASH PREDICT
+   Enterprise Banking / Security Operations UI
+   Step 1 - Visual Foundation
+   ========================================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+
+/* =========================================================
+   GLOBAL
+   ========================================================= */
+
+:root {
+  --bg: #0f141a;
+  --sidebar: #111820;
+  --panel: #151c24;
+  --panel-hover: #19222c;
+  --panel-soft: #121920;
+
+  --border: #29333d;
+  --border-light: #202a33;
+
+  --text: #e7ebef;
+  --text-secondary: #929da8;
+  --text-muted: #697581;
+
+  --blue: #4c8dff;
+  --blue-hover: #619bff;
+
+  --green: #35b779;
+  --amber: #d9a441;
+  --red: #e06b5d;
+  --critical: #c93c3c;
+
+  --radius: 7px;
+  --radius-small: 5px;
+
+  --sidebar-width: 232px;
+}
+
+
+* {
+  box-sizing: border-box;
+}
+
+
+html,
+body,
+#root {
+  margin: 0;
+  width: 100%;
+  min-height: 100%;
+}
+
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', Arial, sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+
+
+button {
+  cursor: pointer;
+}
+
+
+::selection {
+  background: rgba(76, 141, 255, 0.25);
+}
+
+
+/* =========================================================
+   SCROLLBAR
+   ========================================================= */
+
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: #303b46;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #42505d;
+}
+
+
+/* =========================================================
+   MAIN APPLICATION SHELL
+   ========================================================= */
+
+.shell {
+  min-height: 100vh;
+  display: flex;
+  background: var(--bg);
+}
+
+
+/* =========================================================
+   SIDEBAR
+   ========================================================= */
+
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+
+  width: var(--sidebar-width);
+
+  display: flex;
+  flex-direction: column;
+
+  background: var(--sidebar);
+  border-right: 1px solid var(--border-light);
+
+  overflow-y: auto;
+  z-index: 20;
+}
+
+
+/* Logo / brand area */
+
+.sidebar > div:first-child {
+  min-height: 74px;
+
+  display: flex;
+  align-items: center;
+
+  padding: 0 20px;
+
+  border-bottom: 1px solid var(--border-light);
+}
+
+
+/* Brand text */
+
+.sidebar h1,
+.sidebar h2,
+.sidebar .brand {
+  margin: 0;
+}
+
+
+/* =========================================================
+   NAVIGATION
+   ========================================================= */
+
+.sidebar nav {
+  padding: 18px 12px;
+}
+
+
+.sidebar nav button,
+.sidebar > button {
+  width: 100%;
+
+  min-height: 38px;
+
+  display: flex;
+  align-items: center;
+  gap: 11px;
+
+  padding: 8px 11px;
+  margin: 2px 0;
+
+  border: 1px solid transparent;
+  border-radius: var(--radius-small);
+
+  background: transparent;
+  color: var(--text-secondary);
+
+  font-size: 12.5px;
+  font-weight: 500;
+
+  text-align: left;
+
+  transition:
+    background 120ms ease,
+    color 120ms ease,
+    border-color 120ms ease;
+}
+
+
+.sidebar nav button:hover,
+.sidebar > button:hover {
+  background: #17212a;
+  color: var(--text);
+}
+
+
+.sidebar nav button.active,
+.sidebar > button.active {
+  background: #18283a;
+  border-color: #263e59;
+  color: #ffffff;
+}
+
+
+.sidebar nav button.active::before,
+.sidebar > button.active::before {
+  content: '';
+
+  width: 3px;
+  height: 20px;
+
+  position: absolute;
+  left: 0;
+
+  background: var(--blue);
+  border-radius: 0 3px 3px 0;
+}
+
+
+.sidebar svg {
+  width: 17px;
+  height: 17px;
+  flex-shrink: 0;
+}
+
+
+/* =========================================================
+   WORKSPACE
+   ========================================================= */
+
+.workspace {
+  width: calc(100% - var(--sidebar-width));
+  min-height: 100vh;
+
+  margin-left: var(--sidebar-width);
+
+  background: var(--bg);
+}
+
+
+/* =========================================================
+   HEADER
+   ========================================================= */
+
+.workspace > header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+
+  min-height: 64px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+
+  padding: 0 28px;
+
+  background: rgba(15, 20, 26, 0.96);
+  border-bottom: 1px solid var(--border-light);
+
+  backdrop-filter: blur(8px);
+}
+
+
+.workspace > header h1,
+.workspace > header h2 {
+  margin: 0;
+
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+}
+
+
+.workspace > header p {
+  margin: 2px 0 0;
+
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+
+/* =========================================================
+   PAGE CONTENT
+   ========================================================= */
+
+.workspace > main,
+.workspace > section,
+.workspace > div {
+  max-width: 1600px;
+}
+
+
+/* Generic content spacing */
+
+.workspace {
+  padding-bottom: 32px;
+}
+
+
+/* =========================================================
+   HEADINGS
+   ========================================================= */
+
+h1,
+h2,
+h3,
+h4 {
+  color: var(--text);
+}
+
+
+h1 {
+  font-size: 22px;
+  line-height: 1.25;
+  font-weight: 600;
+}
+
+
+h2 {
+  font-size: 17px;
+  line-height: 1.3;
+  font-weight: 600;
+}
+
+
+h3 {
+  font-size: 14px;
+  line-height: 1.4;
+  font-weight: 600;
+}
+
+
+p {
+  color: var(--text-secondary);
+}
+
+
+/* =========================================================
+   PANELS / CARDS
+   ========================================================= */
+
+.card,
+.panel,
+section,
+.metric,
+.stat,
+.kpi {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+
+/* Remove exaggerated card styling */
+
+.card,
+.panel,
+.metric,
+.stat,
+.kpi {
+  box-shadow: none;
+}
+
+
+/* =========================================================
+   KPI / STAT CARDS
+   ========================================================= */
+
+.metric,
+.stat,
+.kpi {
+  padding: 17px 18px;
+}
+
+
+.metric h3,
+.stat h3,
+.kpi h3 {
+  margin: 0 0 6px;
+
+  color: var(--text-secondary);
+
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+
+.metric strong,
+.stat strong,
+.kpi strong {
+  display: block;
+
+  color: var(--text);
+
+  font-size: 25px;
+  line-height: 1.1;
+  font-weight: 600;
+}
+
+
+.metric small,
+.stat small,
+.kpi small {
+  display: block;
+
+  margin-top: 6px;
+
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+
+/* =========================================================
+   LINKS
+   ========================================================= */
+
+a {
+  color: var(--blue);
+  text-decoration: none;
+}
+
+
+a:hover {
+  color: var(--blue-hover);
+}
+
+
+/* =========================================================
+   BUTTONS
+   ========================================================= */
+
+button {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-small);
+
+  background: #18212a;
+  color: var(--text);
+
+  padding: 7px 12px;
+
+  font-size: 12px;
+  font-weight: 500;
+
+  transition:
+    background 120ms ease,
+    border-color 120ms ease,
+    color 120ms ease;
+}
+
+
+button:hover {
+  background: #202b35;
+  border-color: #3a4753;
+}
+
+
+button:active {
+  transform: translateY(1px);
+}
+
+
+/* Primary button */
+
+button.primary,
+.primary {
+  background: #245cae;
+  border-color: #3470ca;
+  color: #ffffff;
+}
+
+
+button.primary:hover,
+.primary:hover {
+  background: #2d6ac3;
+}
+
+
+/* =========================================================
+   INPUTS / SEARCH
+   ========================================================= */
+
+input,
+select,
+textarea {
+  min-height: 34px;
+
+  padding: 7px 10px;
+
+  background: #111820;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-small);
+
+  color: var(--text);
+
+  outline: none;
+
+  font-size: 12px;
+}
+
+
+input::placeholder,
+textarea::placeholder {
+  color: #66727d;
+}
+
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: #426fae;
+  box-shadow: 0 0 0 2px rgba(76, 141, 255, 0.08);
+}
+
+
+/* =========================================================
+   TABLES
+   ========================================================= */
+
+table {
+  width: 100%;
+
+  border-collapse: collapse;
+
+  color: var(--text);
+  font-size: 12px;
+}
+
+
+thead {
+  background: #111820;
+}
+
+
+th {
+  padding: 10px 12px;
+
+  border-bottom: 1px solid var(--border);
+
+  color: var(--text-muted);
+
+  font-size: 10.5px;
+  font-weight: 600;
+
+  text-align: left;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+
+td {
+  padding: 11px 12px;
+
+  border-bottom: 1px solid var(--border-light);
+
+  color: #cbd3da;
+
+  vertical-align: middle;
+}
+
+
+tbody tr {
+  transition: background 100ms ease;
+}
+
+
+tbody tr:hover {
+  background: #19232c;
+}
+
+
+tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+
+/* =========================================================
+   RISK BADGES
+   ========================================================= */
+
+.risk {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+
+  padding: 3px 7px;
+
+  border: 1px solid;
+
+  border-radius: 4px;
+
+  font-size: 10px;
+  font-weight: 600;
+
+  letter-spacing: 0.2px;
+  text-transform: uppercase;
+}
+
+
+.risk::before {
+  content: '';
+
+  width: 5px;
+  height: 5px;
+
+  border-radius: 50%;
+}
+
+
+.risk.low {
+  color: var(--green);
+  background: rgba(53, 183, 121, 0.07);
+  border-color: rgba(53, 183, 121, 0.35);
+}
+
+
+.risk.low::before {
+  background: var(--green);
+}
+
+
+.risk.medium {
+  color: var(--amber);
+  background: rgba(217, 164, 65, 0.07);
+  border-color: rgba(217, 164, 65, 0.35);
+}
+
+
+.risk.medium::before {
+  background: var(--amber);
+}
+
+
+.risk.high {
+  color: var(--red);
+  background: rgba(224, 107, 93, 0.07);
+  border-color: rgba(224, 107, 93, 0.35);
+}
+
+
+.risk.high::before {
+  background: var(--red);
+}
+
+
+.risk.critical {
+  color: #ef7777;
+  background: rgba(201, 60, 60, 0.08);
+  border-color: rgba(201, 60, 60, 0.4);
+}
+
+
+.risk.critical::before {
+  background: var(--critical);
+}
+
+
+/* =========================================================
+   STATUS BADGES
+   ========================================================= */
+
+.status {
+  display: inline-flex;
+  align-items: center;
+
+  padding: 3px 7px;
+
+  border: 1px solid var(--border);
+
+  border-radius: 4px;
+
+  background: #18212a;
+
+  color: var(--text-secondary);
+
+  font-size: 10px;
+  font-weight: 500;
+}
+
+
+.status.success,
+.status.online {
+  color: var(--green);
+  border-color: rgba(53, 183, 121, 0.3);
+  background: rgba(53, 183, 121, 0.06);
+}
+
+
+.status.warning,
+.status.pending {
+  color: var(--amber);
+  border-color: rgba(217, 164, 65, 0.3);
+  background: rgba(217, 164, 65, 0.06);
+}
+
+
+.status.danger,
+.status.failed {
+  color: var(--red);
+  border-color: rgba(224, 107, 93, 0.3);
+  background: rgba(224, 107, 93, 0.06);
+}
+
+
+/* =========================================================
+   ERROR MESSAGE
+   ========================================================= */
+
+.error {
+  margin: 18px 28px;
+  padding: 10px 12px;
+
+  border: 1px solid rgba(224, 107, 93, 0.35);
+  border-radius: var(--radius-small);
+
+  background: rgba(224, 107, 93, 0.07);
+
+  color: #ef8a7e;
+
+  font-size: 12px;
+}
+
+
+/* =========================================================
+   LOGIN
+   ========================================================= */
+
+.login {
+  min-height: 100vh;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 24px;
+
+  background: var(--bg);
+}
+
+
+.login form {
+  width: min(400px, 100%);
+
+  padding: 30px;
+
+  background: var(--panel);
+
+  border: 1px solid var(--border);
+  border-radius: 8px;
+
+  box-shadow: none;
+}
+
+
+.login h1 {
+  margin: 0 0 6px;
+
+  font-size: 23px;
+}
+
+
+.login p {
+  margin: 0 0 22px;
+}
+
+
+.login label {
+  display: block;
+
+  margin-bottom: 14px;
+
+  color: var(--text-secondary);
+
+  font-size: 11px;
+  font-weight: 500;
+}
+
+
+.login input {
+  width: 100%;
+  margin-top: 6px;
+}
+
+
+.login button {
+  width: 100%;
+  min-height: 38px;
+  margin-top: 6px;
+}
+
+
+/* =========================================================
+   ICONS
+   ========================================================= */
+
+svg {
+  stroke-width: 1.8;
+}
+
+
+.icon {
+  color: var(--text-secondary);
+}
+
+
+/* =========================================================
+   FILTER BAR
+   ========================================================= */
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+
+  padding: 12px;
+
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+
+.filters label {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+
+.filters input,
+.filters select {
+  min-width: 130px;
+}
+
+
+/* =========================================================
+   DIVIDERS
+   ========================================================= */
+
+hr {
+  height: 1px;
+
+  margin: 18px 0;
+
+  border: 0;
+
+  background: var(--border-light);
+}
+
+
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
+
+@media (max-width: 1100px) {
+
+  :root {
+    --sidebar-width: 210px;
+  }
+
+  .workspace > header {
+    padding: 0 20px;
+  }
+}
+
+
+@media (max-width: 800px) {
+
+  .sidebar {
+    width: 64px;
+  }
+
+  .workspace {
+    width: calc(100% - 64px);
+    margin-left: 64px;
+  }
+
+  .sidebar nav button {
+    justify-content: center;
+    padding: 8px;
+  }
+
+  .sidebar nav button span {
+    display: none;
+  }
+}
+
+
+@media (max-width: 600px) {
+
+  .sidebar {
+    display: none;
+  }
+
+  .workspace {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .workspace > header {
+    padding: 0 14px;
+  }
+}/* =========================================================
+   STEP 2 - DASHBOARD LAYOUT
+   ========================================================= */
+
+.page-content {
+  padding: 24px 28px;
+}
+
+.page-heading {
+  min-height: 66px;
+}
+
+.dashboard-kpis .kpi {
+  min-height: 112px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.dashboard-kpis .kpi strong {
+  margin-top: 2px;
+}
+
+.card {
+  overflow: hidden;
+}
+
+.card > div {
+  box-sizing: border-box;
+}
+
+/* Dashboard map */
+
+.dashboard-map {
+  min-height: 310px;
+}
+
+/* Make the dashboard slightly denser */
+
+.dashboard-grid {
+  align-items: stretch;
+}
+
+/* Better table appearance */
+
+.card table {
+  table-layout: fixed;
+}
+
+.card table th:first-child,
+.card table td:first-child {
+  width: 105px;
+}
+
+.card table th:nth-child(2),
+.card table td:nth-child(2) {
+  width: 90px;
+}
+
+/* Responsive dashboard */
+
+@media (max-width: 1200px) {
+
+  .dashboard-kpis {
+    grid-template-columns:
+      repeat(3, minmax(0, 1fr)) !important;
+  }
+
+}
+
+@media (max-width: 900px) {
+
+  .dashboard-kpis {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr)) !important;
+  }
+
+}
+
+@media (max-width: 700px) {
+
+  .page-content {
+    padding: 18px;
+  }
+
+  .dashboard-kpis {
+    grid-template-columns:
+      1fr !important;
+  }
+
+}

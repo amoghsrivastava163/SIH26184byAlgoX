@@ -1,0 +1,19 @@
+services:
+  database:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_DB: cybercash
+      POSTGRES_USER: cybercash
+      POSTGRES_PASSWORD: cybercash
+    ports: ["5432:5432"]
+  backend:
+    build: ./backend
+    environment:
+      JWT_SECRET: development-only-change-me
+      CORS_ORIGINS: http://localhost:5173
+    ports: ["8000:8000"]
+    depends_on: [database]
+  frontend:
+    build: ./frontend
+    ports: ["5173:5173"]
+    depends_on: [backend]
