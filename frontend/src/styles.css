@@ -10,30 +10,311 @@
 /* =========================================================
    GLOBAL
    ========================================================= */
+/* =========================================================
+   REAL GEOGRAPHIC RISK MAP
+   ========================================================= */
 
+.real-map-container {
+  position: relative;
+  width: 100%;
+  min-height: 560px;
+  overflow: hidden;
+
+  background: #151c24;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+
+/* Map toolbar */
+
+.map-toolbar {
+  position: absolute;
+
+  top: 14px;
+  left: 14px;
+  right: 14px;
+
+  z-index: 1000;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 16px;
+
+  padding: 10px 12px;
+
+  background: #141b23;
+
+  border: 1px solid var(--border);
+
+  border-radius: 6px;
+
+}
+
+.map-toolbar strong {
+  display: block;
+
+  color: var(--text);
+
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.map-toolbar span {
+  display: block;
+
+  margin-top: 2px;
+
+  color: var(--text-muted);
+
+  font-size: 10px;
+}
+
+
+/* Filter buttons */
+
+.map-filters {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.map-filter {
+  min-height: 28px;
+
+  padding: 4px 9px;
+
+  border: 1px solid var(--border);
+
+  border-radius: 4px;
+
+  background: #18212a;
+
+  color: var(--text-secondary);
+
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.map-filter:hover {
+  background: #202b35;
+}
+
+.map-filter.active {
+  border-color: #426fae;
+  background: #1b3048;
+  color: #ffffff;
+}
+
+.map-filter.low.active {
+  color: var(--green);
+}
+
+.map-filter.medium.active {
+  color: var(--amber);
+}
+
+.map-filter.high.active {
+  color: var(--red);
+}
+
+.map-filter.critical.active {
+  color: #ef7777;
+}
+
+
+/* Actual Leaflet map */
+
+.cybercash-map {
+  width: 100%;
+  height: 560px;
+
+  background: #d8dde1;
+
+  z-index: 1;
+}
+
+
+/*
+   Make the real geographic map fit the
+   CyberCash dark enterprise interface.
+*/
+
+.cybercash-map .leaflet-control-zoom {
+  border: 1px solid var(--border) !important;
+}
+
+.cybercash-map .leaflet-control-zoom a {
+  background: #151c24 !important;
+
+  color: var(--text) !important;
+
+  border-bottom-color: var(--border) !important;
+}
+
+.cybercash-map .leaflet-control-zoom a:hover {
+  background: #202b35 !important;
+}
+
+
+/* Attribution */
+
+.cybercash-map .leaflet-control-attribution {
+  background: #141b23 !important;
+
+  color: #89949f;
+
+  font-size: 9px;
+}
+
+.cybercash-map .leaflet-control-attribution a {
+  color: #8faee0;
+}
+
+
+/* Legend */
+
+.map-legend {
+  position: absolute;
+
+  bottom: 16px;
+  left: 16px;
+
+  z-index: 1000;
+
+  display: flex;
+
+  gap: 12px;
+
+  padding: 8px 10px;
+
+  background: var(--panel);
+
+  border: 1px solid var(--border);
+
+  border-radius: 5px;
+
+}
+
+.map-legend span {
+  display: flex;
+
+  align-items: center;
+
+  gap: 5px;
+
+  color: var(--text-secondary);
+
+  font-size: 10px;
+}
+
+.legend-dot {
+  width: 7px;
+  height: 7px;
+
+  display: inline-block;
+
+  border-radius: 50%;
+}
+
+.low-dot {
+  background: var(--green);
+}
+
+.medium-dot {
+  background: var(--amber);
+}
+
+.high-dot {
+  background: var(--red);
+}
+
+.critical-dot {
+  background: var(--critical);
+}
+
+
+/* Count */
+
+.map-count {
+  position: absolute;
+
+  right: 16px;
+  bottom: 16px;
+
+  z-index: 1000;
+
+  padding: 7px 9px;
+
+  background: var(--panel);
+
+  border: 1px solid var(--border);
+
+  border-radius: 5px;
+
+  color: var(--text-muted);
+
+  font-size: 10px;
+
+}
+
+
+/* Responsive */
+
+@media (max-width: 800px) {
+
+  .map-toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .map-filters {
+    width: 100%;
+    overflow-x: auto;
+  }
+
+  .cybercash-map {
+    height: 500px;
+  }
+
+  .map-legend {
+    left: 10px;
+    bottom: 10px;
+
+    gap: 7px;
+  }
+
+  .map-count {
+    right: 10px;
+    bottom: 10px;
+  }
+
+}
 :root {
-  --bg: #0f141a;
-  --sidebar: #111820;
-  --panel: #151c24;
-  --panel-hover: #19222c;
-  --panel-soft: #121920;
+  --bg: #0D1117;
+  --sidebar: #10161D;
+  --panel: #141B23;
+  --panel-hover: #171F28;
+  --panel-soft: #171F28;
 
-  --border: #29333d;
-  --border-light: #202a33;
+  --border: #28323C;
+  --border-light: #28323C;
 
   --text: #e7ebef;
-  --text-secondary: #929da8;
-  --text-muted: #697581;
+  --text-secondary: #98A3AE;
+  --text-muted: #68737E;
 
-  --blue: #4c8dff;
-  --blue-hover: #619bff;
+  --blue: #4A86E8;
+  --blue-hover: #4A86E8;
 
   --green: #35b779;
   --amber: #d9a441;
   --red: #e06b5d;
   --critical: #c93c3c;
 
-  --radius: 7px;
+  --radius: 6px;
   --radius-small: 5px;
 
   --sidebar-width: 232px;
@@ -273,10 +554,9 @@ button {
 
   padding: 0 28px;
 
-  background: rgba(15, 20, 26, 0.96);
+  background: #0D1117;
   border-bottom: 1px solid var(--border-light);
 
-  backdrop-filter: blur(8px);
 }
 
 
@@ -529,7 +809,7 @@ input:focus,
 select:focus,
 textarea:focus {
   border-color: #426fae;
-  box-shadow: 0 0 0 2px rgba(76, 141, 255, 0.08);
+  box-shadow: none;
 }
 
 

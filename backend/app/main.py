@@ -15,25 +15,78 @@ app.add_middleware(CORSMiddleware, allow_origins=os.getenv("CORS_ORIGINS", "http
 secret = os.getenv("JWT_SECRET", "development-only-change-me")
 auth = HTTPBearer()
 rng = Random(26184)
-zones = [f"Zone {i}" for i in range(1, 9)]
+districts = [
+    ("Bhopal", 23.2599, 77.4126), ("Indore", 22.7196, 75.8577),
+    ("Gwalior", 26.2183, 78.1828), ("Jabalpur", 23.1815, 79.9864),
+    ("Ujjain", 23.1765, 75.7885), ("Sagar", 23.8388, 78.7378),
+    ("Satna", 24.6005, 80.8322), ("Rewa", 24.5362, 81.3040),
+    ("Dewas", 22.9676, 76.0534), ("Ratlam", 23.3315, 75.0367),
+    ("Khandwa", 21.8247, 76.3526), ("Shivpuri", 25.4320, 77.6644),
+]
+zones = [district[0] for district in districts[:8]]
 bank_names = ["National Trust", "Civic Bank", "Union Digital", "SecurePay"]
 now = datetime.now(timezone.utc)
 
-def risk(score: int) -> str: return "HIGH" if score >= 75 else "MEDIUM" if score >= 40 else "LOW"
+def risk(score: int) -> str: return "CRITICAL" if score >= 90 else "HIGH" if score >= 75 else "MEDIUM" if score >= 40 else "LOW"
 def signals(score: int):
     base=["Recent suspicious transaction activity", "Historical withdrawal pattern", "Spatial proximity to related signals", "Evening activity concentration", "Related case concentration"]
     return base[: 2 + (score >= 75) + (score >= 50)]
 atms=[]
 for i in range(1, 121):
     score=(i*19+17)%88+8
-    atms.append({"id":f"ATM-{i:03d}","zone":zones[(i-1)%8],"bank":bank_names[i%4],"address":f"Synthetic location {i}, Bengaluru", "lat":12.91+(i%15)*.008,"lng":77.52+(i//15)*.011,"risk_score":score,"risk_level":risk(score),"window":"19:00 – 22:00" if score>=75 else "14:00 – 17:00" if score>=40 else "09:00 – 12:00","activity":(i*7)%42,"incidents":(i*3)%13,"updated":now.isoformat(),"signals":signals(score)})
-cases=[{"id":f"CASE-2026-{i:03d}","fraud_type":["UPI impersonation","Investment scam","Remote access fraud"][i%3],"amount":round(32000+i*7931.4,2),"status":["New","Investigating","Escalated","Resolved"][i%4],"priority":["High","Medium","Low"][i%3],"created":(now-timedelta(days=i)).date().isoformat(),"risk_score":(i*13)%75+25} for i in range(1,49)]
-transactions=[{"id":f"TXN-{i:05d}","timestamp":(now-timedelta(hours=i*3)).isoformat(),"sender":f"ACC-{(i*7)%900:04d}","receiver":f"ACC-{(i*13)%900:04d}","amount":round(500+(i*1793)%180000,2),"suspicious":i%5==0,"risk":risk((i*17)%98+2),"case_id":cases[i%len(cases)]["id"],"zone":zones[i%8]} for i in range(1,801)]
+    district, base_lat, base_lng = districts[(i - 1) % len(districts)]
+    offset_lat = ((i * 17) % 11 - 5) * .012
+    offset_lng = ((i * 23) % 11 - 5) * .012
+    atms.append({"id":f"ATM-{i:03d}","zone":district,"district":district,"bank":bank_names[i%4],"address":f"{district} synthetic operational location {i}", "lat":base_lat+offset_lat,"lng":base_lng+offset_lng,"risk_score":score,"risk_level":risk(score),"window":"02:00 – 04:00" if score>=75 else "14:00 – 17:00" if score>=40 else "09:00 – 12:00","activity":(i*7)%42,"incidents":(i*3)%13,"updated":now.isoformat(),"signals":signals(score)})
+cases=[{"id":f"CASE-2026-{i:03d}","fraud_type":["UPI impersonation","Investment scam","Remote access fraud"][i%3],"amount":round(32000+i*7931.4,2),"status":["New","Investigating","Escalated","Resolved"][i%4],"priority":["High","Medium","Low"][i%3],"created":(now-timedelta(days=i)).date().isoformat(),"risk_score":(i*13)%75+25,"atm_id":atms[(i*5)%len(atms)]["id"]} for i in range(1,49)]
+transactions=[{"id":f"TXN-{i:05d}","timestamp":(now-timedelta(hours=i*3)).isoformat(),"sender":f"ACC-{(i*7)%900:04d}","receiver":f"ACC-{(i*13)%900:04d}","amount":round(500+(i*1793)%180000,2),"suspicious":i%5==0,"risk":risk((i*17)%98+2),"case_id":cases[i%len(cases)]["id"],"atm_id":atms[(i*11)%len(atms)]["id"],"zone":atms[(i*11)%len(atms)]["zone"]} for i in range(1,801)]
 alerts=[{"id":f"ALT-{i:03d}","title":"High-risk ATM zone" if i%2 else "Suspicious transaction cluster","zone":zones[i%8],"score":82+(i%15),"window":"19:00 – 22:00","status":"NEW" if i<6 else "ACKNOWLEDGED","created":(now-timedelta(hours=i*4)).isoformat(),"atm_id":atms[i]["id"]} for i in range(1,13)]
+complaints=[]
+for i in range(1, 37):
+    atm = atms[(i * 11) % len(atms)]
+    transaction = transactions[(i * 19) % len(transactions)]
+    linked_case = cases[(i * 3) % len(cases)]
+    complaints.append({
+        "id": f"CMP-{1041 + i}", "reference_number": f"CMP-{1041 + i}",
+        "reported_at": (now-timedelta(days=i, hours=i % 14)).isoformat(),
+        "fraud_type": ["UPI Fraud", "Investment scam", "Remote access fraud", "Impersonation fraud"][i % 4],
+        "amount": round(12500 + i * 3675.5, 2), "district": atm["district"],
+        "police_station": f"{atm['district']} Cyber Cell", "transaction_id": transaction["id"],
+        "bank": atm["bank"], "transaction_time": transaction["timestamp"],
+        "transaction_amount": transaction["amount"], "suspected_atm_id": atm["id"],
+        "suspected_district": atm["district"], "suspected_time_window": atm["window"],
+        "description": "Synthetic complaint record for prototype risk-analysis demonstration.",
+        "status": ["NEW", "ACTIVE", "UNDER REVIEW", "ANALYZED", "ESCALATED", "CLOSED"][i % 6],
+        "priority": ["LOW", "MEDIUM", "HIGH"][i % 3], "risk_score": atm["risk_score"],
+        "created_at": (now-timedelta(days=i)).isoformat(), "updated_at": now.isoformat(),
+        "related_transactions": [transaction["id"]], "related_atms": [atm["id"]],
+        "related_alerts": [alerts[i % len(alerts)]["id"]], "related_case": linked_case["id"],
+        "prediction_id": f"PRED-{atm['id']}", "analysis": None
+    })
 users={"admin@cybercash.local":("DemoAdmin!2026","Admin"),"investigator@cybercash.local":("DemoInvestigator!2026","Investigator"),"analyst@cybercash.local":("DemoAnalyst!2026","Analyst")}
 
 class Login(BaseModel): email:str; password:str
 class AlertUpdate(BaseModel): status:Literal["NEW","ACKNOWLEDGED","READ"]
+class ComplaintCreate(BaseModel):
+    reference_number: str
+    reported_at: datetime
+    fraud_type: str
+    amount: float
+    district: str
+    police_station: str
+    transaction_id: str
+    bank: str
+    transaction_time: datetime
+    transaction_amount: float
+    suspected_atm_id: str
+    suspected_district: str
+    suspected_time_window: str
+    description: str
+    priority: Literal["LOW", "MEDIUM", "HIGH"] = "MEDIUM"
+class ComplaintUpdate(BaseModel):
+    status: Literal["NEW", "ACTIVE", "UNDER REVIEW", "ANALYZED", "ESCALATED", "CLOSED"] | None = None
+    priority: Literal["LOW", "MEDIUM", "HIGH"] | None = None
+    description: str | None = None
 def current_user(c:HTTPAuthorizationCredentials=Depends(auth)):
     try:return jwt.decode(c.credentials,secret,algorithms=["HS256"])
     except jwt.PyJWTError: raise HTTPException(401,"Invalid or expired session")
@@ -69,6 +122,36 @@ def list_transactions(q:str="", suspicious:bool|None=None, skip:int=0, limit:int
     return {"items":items[skip:skip+min(limit,100)],"total":len(items)}
 @app.get("/api/cases")
 def list_cases(user=Depends(require("Admin","Investigator","Analyst"))): return {"items":cases}
+@app.get("/api/complaints")
+def list_complaints(q:str="", status:str="", priority:str="", district:str="", fraud_type:str="", user=Depends(require("Admin","Investigator","Analyst"))):
+    items = [c for c in complaints if (not q or q.lower() in str(c).lower()) and (not status or c["status"] == status) and (not priority or c["priority"] == priority) and (not district or c["district"] == district) and (not fraud_type or c["fraud_type"] == fraud_type)]
+    return {"items": items, "total": len(items), "dataset": "Synthetic operational dataset"}
+@app.get("/api/complaints/{complaint_id}")
+def get_complaint(complaint_id:str, user=Depends(require("Admin","Investigator","Analyst"))):
+    complaint = next((c for c in complaints if c["id"] == complaint_id), None)
+    if not complaint: raise HTTPException(404, "Complaint not found")
+    return complaint
+@app.post("/api/complaints", status_code=201)
+def create_complaint(data:ComplaintCreate, user=Depends(require("Admin","Investigator"))):
+    if any(c["reference_number"] == data.reference_number for c in complaints): raise HTTPException(409, "Complaint reference already exists")
+    atm = next((a for a in atms if a["id"] == data.suspected_atm_id), None)
+    if not atm: raise HTTPException(422, "Suspected ATM was not found")
+    item = {"id":data.reference_number, **data.model_dump(mode="json"), "status":"NEW", "risk_score":atm["risk_score"], "created_at":now.isoformat(), "updated_at":now.isoformat(), "related_transactions":[data.transaction_id], "related_atms":[data.suspected_atm_id], "related_alerts":[], "related_case":None, "prediction_id":f"PRED-{data.suspected_atm_id}", "analysis":None}
+    complaints.insert(0, item); return item
+@app.patch("/api/complaints/{complaint_id}")
+def update_complaint(complaint_id:str, data:ComplaintUpdate, user=Depends(require("Admin","Investigator"))):
+    complaint = next((c for c in complaints if c["id"] == complaint_id), None)
+    if not complaint: raise HTTPException(404, "Complaint not found")
+    for key, val in data.model_dump(exclude_none=True).items(): complaint[key] = val
+    complaint["updated_at"] = datetime.now(timezone.utc).isoformat(); return complaint
+@app.post("/api/complaints/{complaint_id}/analyze")
+def analyze_complaint(complaint_id:str, user=Depends(require("Admin","Investigator","Analyst"))):
+    complaint = next((c for c in complaints if c["id"] == complaint_id), None)
+    if not complaint: raise HTTPException(404, "Complaint not found")
+    same_district = [a for a in atms if a["district"] == complaint["district"]]
+    candidates = sorted(same_district or atms, key=lambda a:a["risk_score"], reverse=True)[:4]
+    analysis = {"complaint_id":complaint_id, "candidates":[{"atm_id":a["id"], "district":a["district"], "risk_score":a["risk_score"], "risk_level":a["risk_level"], "window":a["window"]} for a in candidates], "risk_factors":[{"name":"Transaction timing", "level":"HIGH" if complaint["priority"] == "HIGH" else "MEDIUM"}, {"name":"Geographic proximity", "level":"HIGH"}, {"name":"Historical activity", "level":"MEDIUM"}, {"name":"Complaint concentration", "level":"MEDIUM"}], "predicted_window":candidates[0]["window"], "notice":"Model-generated risk signal based on synthetic operational data."}
+    complaint["analysis"] = analysis; complaint["status"] = "ANALYZED"; complaint["updated_at"] = datetime.now(timezone.utc).isoformat(); return analysis
 @app.get("/api/alerts")
 def list_alerts(user=Depends(require("Admin","Investigator"))): return {"items":alerts}
 @app.patch("/api/alerts/{alert_id}")
