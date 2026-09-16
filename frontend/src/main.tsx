@@ -37,7 +37,6 @@ import {
 } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import './styles.css';
-import './redesign.css';
 import { ComplaintWorkspace, Complaint } from './ComplaintWorkspace';
 
 type ATM = {
@@ -668,22 +667,18 @@ function App() {
         action={<div className="page-actions"><span className="geo-context">Madhya Pradesh<br/><b>36 districts · {atms.length || 100} ATMs</b></span><select aria-label="Date range"><option>Last 24 Hours</option><option>Last 7 Days</option><option>Last 30 Days</option></select><button onClick={loadCore} disabled={loading}>{loading ? 'Refreshing…' : 'Refresh'}</button></div>}
       />
 
-      <section className="operational-summary">
-        <div className="summary-title">Operational Summary</div>
-        <div className="summary-grid">
-          <div><span>ATM Network</span><strong>{atms.length || '—'}</strong><small>Active ATMs</small></div>
-          <div><span>Risk Exposure</span><strong>{atms.filter((a) => ['HIGH', 'CRITICAL'].includes(String(a.risk_level).toUpperCase())).length}</strong><small>High / Critical</small></div>
-          <div><span>Transaction Activity</span><strong>{summary?.suspicious_transactions ?? '—'}</strong><small>Flagged · last 24 hours</small></div>
-          <div><span>Open Alerts</span><strong>{alerts.length}</strong><small>Requires review</small></div>
-          <div><span>Active Cases</span><strong>{summary?.active_cases ?? '—'}</strong><small>Investigation workload</small></div>
-          <div><span>Complaint Activity</span><strong>{complaints.filter((c) => !['CLOSED', 'ANALYZED'].includes(c.status)).length}</strong><small>Open synthetic complaints</small></div>
-        </div>
-      </section>
+      <div className="dashboard-kpis" style={{ display: 'grid' }}>
+        <div className="kpi"><h3>ATM Network</h3><strong>{atms.length || '—'}</strong><small>Total ATMs</small></div>
+        <div className="kpi"><h3>Risk Exposure</h3><strong>{atms.filter((a) => ['HIGH', 'CRITICAL'].includes(String(a.risk_level).toUpperCase())).length}</strong><small>High / Critical ATMs</small></div>
+        <div className="kpi"><h3>Transaction Activity</h3><strong>{summary?.suspicious_transactions ?? '—'}</strong><small>Flagged transactions</small></div>
+        <div className="kpi"><h3>Open Alerts</h3><strong>{alerts.filter((alert) => String(value(alert, ['status'], '')).toUpperCase() !== 'ACKNOWLEDGED').length}</strong><small>Requires review</small></div>
+        <div className="kpi"><h3>Active Cases</h3><strong>{summary?.active_cases ?? '—'}</strong><small>{complaints.filter((c) => !['CLOSED', 'ANALYZED'].includes(c.status)).length} open complaints</small></div>
+      </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.35fr) minmax(340px, .65fr)', gap: 12, marginBottom: 12 }}>
         <section className="card">
           <div style={{ padding: '15px 16px', borderBottom: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div><h3 style={{ margin: 0 }}>ATM Risk Overview</h3><p style={{ margin: '3px 0 0', fontSize: 11 }}>Current predicted risk across monitored ATMs</p></div>
+            <div><h3 style={{ margin: 0 }}>Geographic Risk Distribution</h3><p style={{ margin: '3px 0 0', fontSize: 11 }}>Madhya Pradesh · synthetic ATM risk data</p></div>
             <button onClick={() => setPage('Live Risk Map')}>View map →</button>
           </div>
           <div
@@ -742,6 +737,9 @@ function App() {
                       <strong>{selected.incidents}</strong>
                     </div>
                   </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginTop: 12 }}>
+                    <button onClick={() => { setQuery(selected.id); setPage('Transactions'); }}>Transactions</button><button onClick={() => { setQuery(selected.id); setPage('Complaints'); }}>Complaints</button><button onClick={() => { setQuery(selected.id); setPage('Cases'); }}>Cases</button><button onClick={() => { setQuery(selected.id); setPage('Alerts'); }}>Alerts</button><button className="primary" style={{ gridColumn: '1 / -1' }} onClick={() => { setQuery(selected.id); setPage('Predictions'); }}>View prediction</button>
+                  </div>
                 </>
               ) : (
                 <p>Select an ATM marker to view details.</p>
@@ -759,7 +757,7 @@ function App() {
               {['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'].map((level) => {
                 const count = atms.filter((a) => String(a.risk_level).toUpperCase() === level).length;
                 const percentage = atms.length ? Math.round((count / atms.length) * 100) : 0;
-                const bar = level === 'LOW' ? '#35b779' : level === 'MEDIUM' ? '#d9a441' : level === 'HIGH' ? '#e06b5d' : '#c93c3c';
+                const bar = level === 'LOW' ? 'var(--green)' : level === 'MEDIUM' ? 'var(--yellow)' : level === 'HIGH' ? 'var(--orange)' : 'var(--red)';
                 return <div key={level} style={{ marginBottom: 13 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}><span style={{ fontSize: 11 }}>{level}</span><span style={{ color: 'var(--text-secondary)', fontSize: 11 }}>{count} · {percentage}%</span></div>
                   <div style={{ height: 6, background: '#202a33', borderRadius: 3, overflow: 'hidden' }}><div style={{ width: `${percentage}%`, height: '100%', background: bar }} /></div>
@@ -768,9 +766,17 @@ function App() {
             </div>
           </section>
           <section className="card">
+            <div style={{ padding: '15px 16px', borderBottom: '1px solid var(--border-light)' }}><h3 style={{ margin: 0 }}>Time-Based Risk Pattern</h3><p style={{ margin: '3px 0 0', fontSize: 11 }}>Hourly synthetic activity signals</p></div>
+            <div style={{ display: 'flex', alignItems: 'end', gap: 4, height: 82, padding: '12px 16px' }}>
+              {hourly.slice(0, 12).map((point, index) => <div key={String(value(point, ['hour'], String(index)))} title={`${value(point, ['hour'], '')}: ${value(point, ['activity'], '0')}`} style={{ flex: 1, minWidth: 4, height: `${Math.max(8, Number(value(point, ['activity'], '0')) * 2)}%`, background: 'var(--blue)' }} />)}
+              {!hourly.length && <span style={{ color: 'var(--muted)', fontSize: 11 }}>No hourly data available.</span>}
+            </div>
+          </section>
+          <section className="card">
             <div style={{ padding: '15px 16px', borderBottom: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between' }}>
               <h3 style={{ margin: 0 }}>Recent Alerts</h3><button onClick={() => setPage('Alerts')}>View all →</button>
             </div>
+            {alerts[0] && <div style={{ padding: '11px 16px', borderBottom: '1px solid var(--border-light)' }}><span style={{ color: 'var(--red)', fontSize: 10, fontWeight: 700 }}>HIGH RISK ALERT</span><strong style={{ display: 'block', marginTop: 3 }}>{value(alerts[0], ['atm_id', 'atm'], 'ATM')} · {value(alerts[0], ['zone'], 'Madhya Pradesh')}</strong><p style={{ margin: '3px 0 8px', fontSize: 10 }}>Risk score {value(alerts[0], ['score'], '—')} · {value(alerts[0], ['window'], 'Window unavailable')}</p><button onClick={() => openATM(String(value(alerts[0], ['atm_id'], '')))}>View details</button></div>}
             {alerts.slice(0, 4).map((alert, index) => <div key={alert.id || index} style={{ padding: '11px 16px', borderBottom: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', gap: 12 }}>
               <div><strong style={{ display: 'block', fontSize: 11 }}>{value(alert, ['title', 'message', 'description'], 'Risk alert')}</strong><span style={{ color: '#697581', fontSize: 10 }}>{value(alert, ['atm_id', 'atm'], 'ATM')}</span></div>
               <AlertTriangle size={15} color="#d9a441" />
@@ -780,9 +786,20 @@ function App() {
         </div>
       </div>
 
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.35fr) minmax(280px, .65fr)', gap: 12, marginBottom: 12 }}>
+        <section className="card">
+          <div style={{ padding: '15px 16px', borderBottom: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between' }}><h3 style={{ margin: 0 }}>Top Risk ATMs</h3><button onClick={() => setPage('ATM Intelligence')}>View all →</button></div>
+          <DataTable columns={['Rank','ATM / Zone','Location','Risk Score','Predicted Time','Confidence']} rows={[...atms].sort((a,b) => b.risk_score - a.risk_score).slice(0,5).map((atm,index) => [index + 1,<button className="table-link" onClick={() => openATM(atm.id)}>{atm.id} · {atm.zone}</button>,atm.address,atm.risk_score,atm.window,<Risk level={atm.risk_level}/>])} empty="No ATM risk data available." />
+        </section>
+        <section className="card">
+          <div style={{ padding: '15px 16px', borderBottom: '1px solid var(--border-light)' }}><h3 style={{ margin: 0 }}>Live Activity</h3></div>
+          <div style={{ padding: '4px 16px' }}>{complaints.slice(0,3).map(c => <div className="detail-row" key={c.id}><span>Complaint received · {c.reference_number}</span><strong>{c.district}</strong></div>)}{alerts.slice(0,2).map(a => <div className="detail-row" key={String(a.id)}><span>Alert generated · {value(a,['atm_id'],'ATM')}</span><strong>{value(a,['status'],'NEW')}</strong></div>)}{!complaints.length&&!alerts.length&&<p style={{ color: 'var(--muted)', fontSize: 11 }}>No recent operational activity.</p>}</div>
+        </section>
+      </div>
+
       <section className="card">
         <div style={{ padding: '15px 16px', borderBottom: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div><h3 style={{ margin: 0 }}>Recent Transactions</h3><p style={{ margin: '3px 0 0', fontSize: 11 }}>Recent transaction activity from the prototype API</p></div>
+          <div><h3 style={{ margin: 0 }}>Recent Predicted Cash-Out Events</h3><p style={{ margin: '3px 0 0', fontSize: 11 }}>Recent transaction activity from the prototype API</p></div>
           <button onClick={() => setPage('Transactions')}>View all →</button>
         </div>
         <DataTable
