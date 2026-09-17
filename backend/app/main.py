@@ -5,6 +5,8 @@ from random import Random
 from typing import Literal
 import os
 import jwt
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
 from fastapi import FastAPI, Depends, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -64,6 +66,8 @@ for i in range(1, 37):
         "prediction_id": f"PRED-{atm['id']}", "analysis": None
     })
 users={"admin@cybercash.local":("DemoAdmin!2026","Admin"),"investigator@cybercash.local":("DemoInvestigator!2026","Investigator"),"analyst@cybercash.local":("DemoAnalyst!2026","Analyst")}
+google_users: dict[str, dict] = {}
+notifications: list[dict] = []
 
 class Login(BaseModel): email:str; password:str
 class AlertUpdate(BaseModel): status:Literal["NEW","ACKNOWLEDGED","READ"]
@@ -87,6 +91,9 @@ class ComplaintUpdate(BaseModel):
     status: Literal["NEW", "ACTIVE", "UNDER REVIEW", "ANALYZED", "ESCALATED", "CLOSED"] | None = None
     priority: Literal["LOW", "MEDIUM", "HIGH"] | None = None
     description: str | None = None
+class GoogleCredential(BaseModel): credential: str
+class UserComplaintCreate(BaseModel):
+    fraud_type: str; occurred_at: datetime; amount: float; bank: str; transaction_id: str; district: str; description: str
 def current_user(c:HTTPAuthorizationCredentials=Depends(auth)):
     try:return jwt.decode(c.credentials,secret,algorithms=["HS256"])
     except jwt.PyJWTError: raise HTTPException(401,"Invalid or expired session")
@@ -102,8 +109,22 @@ def login(data:Login):
     if not record or data.password!=record[0]: raise HTTPException(401,"Invalid Officer ID or password")
     token=jwt.encode({"sub":data.email,"role":record[1],"exp":now+timedelta(hours=8)},secret,algorithm="HS256")
     return {"access_token":token,"token_type":"bearer","user":{"email":data.email,"role":record[1]}}
+@app.post("/api/auth/google")
+def google_login(data: GoogleCredential):
+    client_id = os.getenv("GOOGLE_CLIENT_ID")
+    if not client_id: raise HTTPException(503, "Google sign-in is not configured")
+    try: identity = id_token.verify_oauth2_token(data.credential, google_requests.Request(), client_id)
+    except Exception: raise HTTPException(401, "Google credential verification failed")
+    if not identity.get("sub") or not identity.get("email_verified"): raise HTTPException(401, "Verified Google email is required")
+    google_sub = identity["sub"]
+    account = google_users.get(google_sub)
+    if not account:
+        account = {"google_sub":google_sub,"email":identity.get("email", ""),"name":identity.get("name", "Citizen"),"profile_picture":identity.get("picture"),"email_verified":True,"role":"USER","created_at":now.isoformat(),"updated_at":now.isoformat()}; google_users[google_sub] = account
+    else: account.update({"email":identity.get("email",account["email"]),"name":identity.get("name",account["name"]),"profile_picture":identity.get("picture",account.get("profile_picture")),"updated_at":datetime.now(timezone.utc).isoformat()})
+    token=jwt.encode({"sub":google_sub,"role":"USER","name":account["name"],"exp":datetime.now(timezone.utc)+timedelta(hours=8)},secret,algorithm="HS256")
+    return {"access_token":token,"token_type":"bearer","user":account}
 @app.get("/api/auth/me")
-def me(user=Depends(current_user)): return user
+def me(user=Depends(current_user)): return google_users.get(user["sub"], {"email":user["sub"],"role":user["role"],"name":user.get("name",user["role"])})
 @app.get("/api/dashboard/summary")
 def summary(user=Depends(current_user)):
     return {"active_cases":sum(c["status"] not in ["Resolved","Closed"] for c in cases),"high_risk_zones":len({a["zone"] for a in atms if a["risk_level"]=="HIGH"}),"suspicious_transactions":sum(t["suspicious"] for t in transactions),"active_alerts":sum(a["status"]=="NEW" for a in alerts),"quality":"Model ready · synthetic validation"}
@@ -144,6 +165,37 @@ def update_complaint(complaint_id:str, data:ComplaintUpdate, user=Depends(requir
     if not complaint: raise HTTPException(404, "Complaint not found")
     for key, val in data.model_dump(exclude_none=True).items(): complaint[key] = val
     complaint["updated_at"] = datetime.now(timezone.utc).isoformat(); return complaint
+@app.post("/api/user/complaints", status_code=201)
+def create_user_complaint(data: UserComplaintCreate, user=Depends(require("USER"))):
+    if data.amount <= 0: raise HTTPException(422, "Amount must be greater than zero")
+    account = google_users.get(user["sub"])
+    if not account: raise HTTPException(401, "Citizen session is not recognized")
+    reference = f"CMP-{1042 + len(complaints)}"
+    item = {"id":reference,"reference_number":reference,"reported_at":datetime.now(timezone.utc).isoformat(),"fraud_type":data.fraud_type,"amount":data.amount,"district":data.district,"police_station":"Citizen online report","transaction_id":data.transaction_id,"bank":data.bank,"transaction_time":data.occurred_at.isoformat(),"transaction_amount":data.amount,"suspected_atm_id":"","suspected_district":data.district,"suspected_time_window":"Not assessed","description":data.description,"status":"SUBMITTED","priority":"MEDIUM","risk_score":None,"created_at":datetime.now(timezone.utc).isoformat(),"updated_at":datetime.now(timezone.utc).isoformat(),"related_transactions":[data.transaction_id],"related_atms":[],"related_alerts":[],"related_case":None,"prediction_id":None,"analysis":None,"owner_google_sub":user["sub"],"reporter_name":account["name"]}
+    complaints.insert(0,item)
+    notifications.insert(0,{"id":f"NTF-{len(notifications)+1:04d}","notification_type":"NEW_COMPLAINT","title":"New Complaint Registered","message":f"{item['fraud_type']} · ₹{item['amount']:,.0f} · {item['district']}","complaint_id":reference,"recipient_role":"INVESTIGATOR","is_read":False,"created_at":datetime.now(timezone.utc).isoformat()})
+    return item
+@app.get("/api/user/complaints")
+def user_complaints(user=Depends(require("USER"))): return {"items":[c for c in complaints if c.get("owner_google_sub") == user["sub"]]}
+@app.get("/api/user/complaints/{complaint_id}")
+def user_complaint_detail(complaint_id:str,user=Depends(require("USER"))):
+    item=next((c for c in complaints if c["id"]==complaint_id and c.get("owner_google_sub")==user["sub"]),None)
+    if not item: raise HTTPException(404,"Complaint not found")
+    return {key:value for key,value in item.items() if key not in {"risk_score","analysis","related_atms","related_alerts","related_case","prediction_id","owner_google_sub"}}
+@app.get("/api/notifications")
+def list_notifications(user=Depends(require("Admin","Investigator"))):
+    items=[note for note in notifications if note["recipient_role"] == "INVESTIGATOR"]
+    return {"items":items[:50],"unread_count":sum(not note["is_read"] for note in items)}
+@app.patch("/api/notifications/read-all")
+def read_all_notifications(user=Depends(require("Admin","Investigator"))):
+    for note in notifications:
+        if note["recipient_role"] == "INVESTIGATOR": note["is_read"] = True
+    return {"status":"ok"}
+@app.patch("/api/notifications/{notification_id}/read")
+def read_notification(notification_id:str,user=Depends(require("Admin","Investigator"))):
+    note=next((note for note in notifications if note["id"]==notification_id and note["recipient_role"]=="INVESTIGATOR"),None)
+    if not note: raise HTTPException(404,"Notification not found")
+    note["is_read"] = True; return note
 @app.post("/api/complaints/{complaint_id}/analyze")
 def analyze_complaint(complaint_id:str, user=Depends(require("Admin","Investigator","Analyst"))):
     complaint = next((c for c in complaints if c["id"] == complaint_id), None)

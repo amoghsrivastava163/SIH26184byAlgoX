@@ -38,6 +38,9 @@ import {
 import 'leaflet/dist/leaflet.css';
 import './styles.css';
 import { ComplaintWorkspace, Complaint } from './ComplaintWorkspace';
+import { CitizenPortal } from './CitizenPortal';
+
+declare global { interface Window { google?: { accounts: { id: { initialize: (config:{client_id:string;callback:(response:{credential:string})=>void})=>void; prompt:()=>void } } } } }
 
 type ATM = {
   id: string;
@@ -79,6 +82,7 @@ type Alert = {
   timestamp?: string;
   [key: string]: any;
 };
+type Notification = { id:string; notification_type:string; title:string; message:string; complaint_id:string; is_read:boolean; created_at:string };
 
 type CaseItem = {
   id?: string;
@@ -468,6 +472,7 @@ function MadhyaPradeshMap({
 
 function App() {
   const [token, setToken] = useState(localStorage.getItem('token') || '');
+  const [account, setAccount] = useState<{role:string;name:string} | null>(null);
   const [page, setPage] = useState('Dashboard');
   const [atms, setAtms] = useState<ATM[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -479,6 +484,10 @@ function App() {
   const [zones, setZones] = useState<any[]>([]);
   const [models, setModels] = useState<any[]>([]);
   const [complaints, setComplaints] = useState<Complaint[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [complaintFocusId, setComplaintFocusId] = useState('');
   const [selected, setSelected] = useState<ATM | null>(null);
   const [query, setQuery] = useState('');
   const [error, setError] = useState('');
@@ -509,6 +518,11 @@ function App() {
     } else {
       delete api.defaults.headers.common.Authorization;
     }
+  }, [token]);
+
+  useEffect(() => {
+    if (token) { api.get('/auth/me').then(response => setAccount(response.data)).catch(() => setAccount(null)); return; }
+    if (!document.querySelector('script[data-google-gis]')) { const script=document.createElement('script');script.src='https://accounts.google.com/gsi/client';script.async=true;script.defer=true;script.dataset.googleGis='true';document.head.appendChild(script); }
   }, [token]);
 
   const loadCore = async () => {
@@ -550,8 +564,18 @@ function App() {
   };
 
   useEffect(() => {
-    if (token) loadCore();
-  }, [token]);
+    if (token && account && account.role !== 'USER') loadCore();
+  }, [token, account]);
+
+  useEffect(() => {
+    if (!token || !account || !['Admin', 'Investigator'].includes(account.role)) return;
+    const refreshNotifications = async () => {
+      try { const response = await api.get('/notifications'); setNotifications(response.data.items || []); setUnreadNotifications(response.data.unread_count || 0); } catch { /* permissions and network errors are handled by normal page state */ }
+    };
+    refreshNotifications();
+    const interval = window.setInterval(refreshNotifications, 12000);
+    return () => window.clearInterval(interval);
+  }, [token, account]);
 
   useEffect(() => {
     if (!token) return;
@@ -591,6 +615,7 @@ function App() {
       const newToken = response.data.access_token || response.data.token;
       localStorage.setItem('token', newToken);
       setToken(newToken);
+      setAccount(response.data.user);
     } catch (err) {
       setError('Login failed. Check the email and password.');
     } finally {
@@ -611,6 +636,22 @@ function App() {
     setPredictions([]);
     setModels([]);
     setComplaints([]);
+    setAccount(null);
+  };
+
+  const startGoogleLogin = () => {
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    if (!clientId || !window.google) { setError('Google sign-in is not configured or is still loading.'); return; }
+    window.google.accounts.id.initialize({client_id:clientId,callback:async ({credential})=>{try{const response=await api.post('/auth/google',{credential});localStorage.setItem('token',response.data.access_token);setAccount(response.data.user);setToken(response.data.access_token)}catch{setError('Google sign-in could not be verified.')}}});
+    window.google.accounts.id.prompt();
+  };
+
+  const openNotification = async (notification: Notification) => {
+    try { if (!notification.is_read) await api.patch(`/notifications/${notification.id}/read`); } catch { setError('Unable to update notification status.'); }
+    await refreshComplaints();
+    setNotifications(items => items.map(item => item.id === notification.id ? {...item,is_read:true} : item));
+    setUnreadNotifications(count => Math.max(0, count - (notification.is_read ? 0 : 1)));
+    setComplaintFocusId(notification.complaint_id); setQuery(notification.complaint_id); setPage('Complaints'); setNotificationsOpen(false);
   };
 
   const filteredTransactions = useMemo(() => {
@@ -793,7 +834,7 @@ function App() {
         </section>
         <section className="card">
           <div style={{ padding: '15px 16px', borderBottom: '1px solid var(--border-light)' }}><h3 style={{ margin: 0 }}>Live Activity</h3></div>
-          <div style={{ padding: '4px 16px' }}>{complaints.slice(0,3).map(c => <div className="detail-row" key={c.id}><span>Complaint received · {c.reference_number}</span><strong>{c.district}</strong></div>)}{alerts.slice(0,2).map(a => <div className="detail-row" key={String(a.id)}><span>Alert generated · {value(a,['atm_id'],'ATM')}</span><strong>{value(a,['status'],'NEW')}</strong></div>)}{!complaints.length&&!alerts.length&&<p style={{ color: 'var(--muted)', fontSize: 11 }}>No recent operational activity.</p>}</div>
+          <div style={{ padding: '4px 16px' }}>{notifications.slice(0,3).map(note => <button className="detail-row" key={note.id} onClick={() => openNotification(note)}><span>New complaint · {note.complaint_id}</span><strong>{formatDate(note.created_at)}</strong></button>)}{complaints.slice(0,3).map(c => <div className="detail-row" key={c.id}><span>Complaint received · {c.reference_number}</span><strong>{c.district}</strong></div>)}{alerts.slice(0,2).map(a => <div className="detail-row" key={String(a.id)}><span>Alert generated · {value(a,['atm_id'],'ATM')}</span><strong>{value(a,['status'],'NEW')}</strong></div>)}{!notifications.length&&!complaints.length&&!alerts.length&&<p style={{ color: 'var(--muted)', fontSize: 11 }}>No recent operational activity.</p>}</div>
         </section>
       </div>
 
@@ -946,7 +987,7 @@ function App() {
     </div>
   );
 
-  const complaintsPage = <ComplaintWorkspace api={api} complaints={complaints} atms={atms} onRefresh={refreshComplaints} onOpenATM={(id) => openATM(id)} onNavigate={(destination, filter) => { if (filter) setQuery(filter); setPage(destination); }} onError={setError} />;
+  const complaintsPage = <ComplaintWorkspace api={api} complaints={complaints} atms={atms} onRefresh={refreshComplaints} onOpenATM={(id) => openATM(id)} onNavigate={(destination, filter) => { if (filter) setQuery(filter); setPage(destination); }} onError={setError} focusComplaintId={complaintFocusId} />;
 
   const transactionsPage = (
     <div className="page-content">
@@ -1158,11 +1199,14 @@ function App() {
           <label>Email<input type="email" value={login.email} onChange={(e) => setLogin({ ...login, email: e.target.value })} /></label>
           <label>Password<input type="password" value={login.password} onChange={(e) => setLogin({ ...login, password: e.target.value })} /></label>
           <button className="primary" type="submit" disabled={loggingIn}>{loggingIn ? 'Signing in...' : 'Sign in'}</button>
-          <p style={{ marginTop: 16, fontSize: 11, textAlign: 'center' }}>Authorized personnel only</p>
+          <p style={{ marginTop: 16, fontSize: 11, textAlign: 'center' }}>Staff login · Admin, Investigator and Analyst</p>
+          <hr/><p style={{ fontSize: 11, textAlign: 'center' }}>Citizen / User login</p><button type="button" onClick={startGoogleLogin}>Continue with Google</button>
         </form>
       </main>
     );
   }
+
+  if (account?.role === 'USER') return <CitizenPortal api={api} name={account.name || 'Citizen'} onLogout={logout} />;
 
   let content = dashboard;
   if (page === 'Live Risk Map') content = liveMap;
@@ -1224,9 +1268,10 @@ function App() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 22 }}>
             <span style={{ color: '#35b779', fontSize: 11 }}>● API Online</span>
             <span style={{ color: '#697581', fontSize: 11 }}>{new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</span>
-            <span aria-label="Notifications"><Bell size={15} /></span>
+            {['Admin','Investigator'].includes(account?.role || '') && <button aria-label="Notifications" onClick={() => setNotificationsOpen(open => !open)} style={{ position: 'relative', minHeight: 30, padding: '0 8px' }}><Bell size={15}/>{unreadNotifications > 0 && <span style={{ marginLeft: 5, color: 'var(--blue)', fontSize: 10, fontWeight: 700 }}>{unreadNotifications}</span>}</button>}
             <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}><UserRound size={15} /><span style={{ fontSize: 11 }}>Investigator</span></div>
           </div>
+          {notificationsOpen && <section className="card" style={{ position: 'absolute', right: 24, top: 56, width: 360, zIndex: 40 }}><div style={{ padding: '12px 14px', display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)' }}><strong>Notifications</strong><button className="table-link" onClick={async () => { await api.patch('/notifications/read-all'); setNotifications(items => items.map(item => ({...item,is_read:true}))); setUnreadNotifications(0); }}>Mark all read</button></div>{notifications.slice(0,5).map(note => <button key={note.id} onClick={() => openNotification(note)} style={{ width: '100%', minHeight: 0, padding: 12, textAlign: 'left', border: 0, borderBottom: '1px solid var(--border-light)', borderRadius: 0, background: note.is_read ? '#fff' : '#edf5ff' }}><strong style={{ display: 'block', fontSize: 11 }}>{note.title}</strong><span style={{ display: 'block', marginTop: 3, color: 'var(--text-2)', fontSize: 10 }}>{note.complaint_id} · {note.message}</span><small style={{ color: 'var(--muted)' }}>{formatDate(note.created_at)}</small></button>)}{!notifications.length && <p style={{ padding: 18, margin: 0, color: 'var(--muted)', fontSize: 11 }}>No new notifications.</p>}<div style={{ padding: 10 }}><button className="table-link" onClick={() => { setPage('Complaints'); setNotificationsOpen(false); }}>View complaints →</button></div></section>}
         </header>
 
         {error && <div className="error" style={{ margin: '14px 28px 0' }}>{error}</div>}
