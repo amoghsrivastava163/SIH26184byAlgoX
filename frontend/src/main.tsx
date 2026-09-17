@@ -28,6 +28,7 @@ import {
   XCircle,
   Bell,
   FilePlus2,
+  Menu,
 } from 'lucide-react';
 import {
   CircleMarker,
@@ -40,7 +41,7 @@ import './styles.css';
 import { ComplaintWorkspace, Complaint } from './ComplaintWorkspace';
 import { CitizenPortal } from './CitizenPortal';
 
-declare global { interface Window { google?: { accounts: { id: { initialize: (config:{client_id:string;callback:(response:{credential:string})=>void})=>void; prompt:()=>void } } } } }
+declare global { interface Window { google?: { accounts: { id: { initialize: (config: { client_id: string; callback: (response: { credential: string }) => void }) => void; prompt: () => void } } } } }
 
 type ATM = {
   id: string;
@@ -82,7 +83,7 @@ type Alert = {
   timestamp?: string;
   [key: string]: any;
 };
-type Notification = { id:string; notification_type:string; title:string; message:string; complaint_id:string; is_read:boolean; created_at:string };
+type Notification = { id: string; notification_type: string; title: string; message: string; complaint_id: string; is_read: boolean; created_at: string };
 
 type CaseItem = {
   id?: string;
@@ -114,8 +115,8 @@ type Prediction = {
 const api = axios.create({ baseURL: '/api' });
 
 const nav = [
-  'Dashboard',
-  'Live Risk Map',
+  'Overview',
+  'Risk Map',
   'ATM Intelligence',
   'Transactions',
   'Complaints',
@@ -123,17 +124,14 @@ const nav = [
   'Alerts',
   'Predictions',
   'Analytics',
-  'Reports',
-  'Data Management',
-  'Model Management',
+  'Models',
   'Audit Logs',
-  'Settings',
 ];
 
 function getIcon(name: string) {
   const props = { size: 17 };
-  if (name === 'Dashboard') return <LayoutDashboard {...props} />;
-  if (name === 'Live Risk Map') return <Map {...props} />;
+  if (name === 'Overview') return <LayoutDashboard {...props} />;
+  if (name === 'Risk Map') return <Map {...props} />;
   if (name === 'ATM Intelligence') return <Building2 {...props} />;
   if (name === 'Transactions') return <Activity {...props} />;
   if (name === 'Complaints') return <FilePlus2 {...props} />;
@@ -141,11 +139,8 @@ function getIcon(name: string) {
   if (name === 'Alerts') return <ShieldAlert {...props} />;
   if (name === 'Predictions') return <Brain {...props} />;
   if (name === 'Analytics') return <BarChart3 {...props} />;
-  if (name === 'Reports') return <FileText {...props} />;
-  if (name === 'Data Management') return <Database {...props} />;
-  if (name === 'Model Management') return <Brain {...props} />;
+  if (name === 'Models') return <Brain {...props} />;
   if (name === 'Audit Logs') return <ClipboardList {...props} />;
-  if (name === 'Settings') return <Settings {...props} />;
   return <Activity {...props} />;
 }
 
@@ -164,6 +159,49 @@ function riskFromScore(score?: number) {
   if (n >= 0.8) return 'HIGH';
   if (n >= 0.5) return 'MEDIUM';
   return 'LOW';
+}
+
+const LIVE_MESSAGES = [
+  "CRITICAL ALERT — Predicted cash-out risk detected near SBI ATM, Vijay Nagar, Indore — 87% probability — Expected window: 02:15–03:00 IST",
+  "High Risk — 87% predicted withdrawal probability — SBI ATM — Vijay Nagar",
+  "Emerging Hotspot — Risk increased +34% in the last 30 min — Palasia",
+  "Network Alert — 3 potentially linked accounts detected in recent transaction patterns",
+  "Prediction — Next probable cash-out window 02:30–03:15 IST",
+  "Intervention — Alert acknowledged by Cybercrime Unit — 2 min ago",
+  "Cross-State Pattern — Potential suspicious fund movement detected from Maharashtra → Madhya Pradesh",
+  "ATM Cluster — 4 high-risk cash points detected within 3 km"
+];
+
+function LiveIntelligenceFeed() {
+  const [index, setIndex] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+  const [transitioning, setTransitioning] = useState(false);
+
+  useEffect(() => {
+    if (isPaused) return;
+    const interval = setInterval(() => {
+      setTransitioning(true);
+      setTimeout(() => {
+        setIndex(i => (i + 1) % LIVE_MESSAGES.length);
+        setTransitioning(false);
+      }, 500);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [isPaused]);
+
+  return (
+    <div className="live-intel-feed" onMouseEnter={() => setIsPaused(true)} onMouseLeave={() => setIsPaused(false)} onFocus={() => setIsPaused(true)} onBlur={() => setIsPaused(false)} tabIndex={0} aria-label="Live Intelligence Feed">
+      <div className="live-intel-label">
+        <div className="dot"></div>
+        <span>LIVE INTELLIGENCE</span>
+      </div>
+      <div className="live-intel-content-wrapper">
+        <div className={`live-intel-message ${transitioning ? 'exiting' : 'active'}`}>
+          {LIVE_MESSAGES[index]}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function value(obj: any, keys: string[], fallback = '—') {
@@ -304,40 +342,11 @@ function MadhyaPradeshMap({
   }, [atms, filter]);
 
   return (
-    <div
-      style={{
-        position: 'relative',
-        height: 570,
-        overflow: 'hidden',
-        background: '#d9dee2',
-        borderRadius: 7,
-      }}
-    >
-      <div
-        style={{
-          position: 'absolute',
-          top: 14,
-          left: 14,
-          right: 14,
-          zIndex: 1000,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 12,
-          padding: '10px 12px',
-          background: 'rgba(15,20,26,.95)',
-          border: '1px solid #29333d',
-          borderRadius: 6,
-          boxShadow: '0 2px 8px rgba(0,0,0,.16)',
-        }}
-      >
+    <div className="map-panel">
+      <div className="map-header">
         <div>
-          <strong style={{ display: 'block', fontSize: 13 }}>
-            Madhya Pradesh · ATM Risk Map
-          </strong>
-          <span style={{ color: '#929da8', fontSize: 10 }}>
-            Real geographic map · synthetic CyberCash risk data
-          </span>
+          <strong>Madhya Pradesh · ATM Risk Map</strong>
+          <span>Real geographic map · synthetic CyberCash risk data</span>
         </div>
 
         <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
@@ -346,24 +355,11 @@ function MadhyaPradeshMap({
               key={item}
               type="button"
               onClick={() => setFilter(item)}
+              className="map-filter-btn"
               style={{
-                minHeight: 28,
-                padding: '4px 9px',
-                border: `1px solid ${filter === item ? '#426fae' : '#29333d'}`,
-                borderRadius: 4,
-                background: filter === item ? '#1b3048' : '#18212a',
-                color:
-                  item === 'LOW'
-                    ? '#35b779'
-                    : item === 'MEDIUM'
-                    ? '#d9a441'
-                    : item === 'HIGH'
-                    ? '#e06b5d'
-                    : item === 'CRITICAL'
-                    ? '#ef7777'
-                    : '#e7ebef',
-                fontSize: 10,
-                fontWeight: 600,
+                border: `1px solid ${filter === item ? 'var(--blue)' : 'var(--border)'}`,
+                background: filter === item ? 'var(--sidebar-active-bg)' : 'var(--surface)',
+                color: filter === item ? 'var(--blue)' : 'var(--text-2)',
               }}
             >
               {item}
@@ -427,43 +423,14 @@ function MadhyaPradeshMap({
         })}
       </MapContainer>
 
-      <div
-        style={{
-          position: 'absolute',
-          left: 14,
-          bottom: 14,
-          zIndex: 1000,
-          display: 'flex',
-          gap: 12,
-          flexWrap: 'wrap',
-          padding: '8px 10px',
-          background: 'rgba(15,20,26,.94)',
-          border: '1px solid #29333d',
-          borderRadius: 5,
-          color: '#929da8',
-          fontSize: 10,
-        }}
-      >
-        <span><b style={{ color: '#35b779' }}>●</b> Low</span>
-        <span><b style={{ color: '#d9a441' }}>●</b> Medium</span>
-        <span><b style={{ color: '#e06b5d' }}>●</b> High</span>
-        <span><b style={{ color: '#c93c3c' }}>●</b> Critical</span>
+      <div className="map-legend">
+        <span><b style={{ color: 'var(--green)' }}>●</b> Low</span>
+        <span><b style={{ color: 'var(--yellow)' }}>●</b> Medium</span>
+        <span><b style={{ color: 'var(--orange)' }}>●</b> High</span>
+        <span><b style={{ color: 'var(--red)' }}>●</b> Critical</span>
       </div>
 
-      <div
-        style={{
-          position: 'absolute',
-          right: 14,
-          bottom: 14,
-          zIndex: 1000,
-          padding: '7px 9px',
-          background: 'rgba(15,20,26,.94)',
-          border: '1px solid #29333d',
-          borderRadius: 5,
-          color: '#697581',
-          fontSize: 10,
-        }}
-      >
+      <div className="map-count">
         {visibleATMs.length} of {atms.length} ATMs
       </div>
     </div>
@@ -471,9 +438,14 @@ function MadhyaPradeshMap({
 }
 
 function App() {
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(localStorage.getItem('cybercash_sidebar_collapsed') === 'true');
+  useEffect(() => {
+    localStorage.setItem('cybercash_sidebar_collapsed', sidebarCollapsed.toString());
+  }, [sidebarCollapsed]);
+
   const [token, setToken] = useState(localStorage.getItem('token') || '');
-  const [account, setAccount] = useState<{role:string;name:string} | null>(null);
-  const [page, setPage] = useState('Dashboard');
+  const [account, setAccount] = useState<{ role: string; name: string } | null>(null);
+  const [page, setPage] = useState('Overview');
   const [atms, setAtms] = useState<ATM[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [summary, setSummary] = useState<any>(null);
@@ -502,17 +474,6 @@ function App() {
   const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const onShortcut = (event: KeyboardEvent) => {
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
-        event.preventDefault();
-        searchRef.current?.focus();
-      }
-    };
-    window.addEventListener('keydown', onShortcut);
-    return () => window.removeEventListener('keydown', onShortcut);
-  }, []);
-
-  useEffect(() => {
     if (token) {
       api.defaults.headers.common.Authorization = 'Bearer ' + token;
     } else {
@@ -522,7 +483,7 @@ function App() {
 
   useEffect(() => {
     if (token) { api.get('/auth/me').then(response => setAccount(response.data)).catch(() => setAccount(null)); return; }
-    if (!document.querySelector('script[data-google-gis]')) { const script=document.createElement('script');script.src='https://accounts.google.com/gsi/client';script.async=true;script.defer=true;script.dataset.googleGis='true';document.head.appendChild(script); }
+    if (!document.querySelector('script[data-google-gis]')) { const script = document.createElement('script'); script.src = 'https://accounts.google.com/gsi/client'; script.async = true; script.defer = true; script.dataset.googleGis = 'true'; document.head.appendChild(script); }
   }, [token]);
 
   const loadCore = async () => {
@@ -593,7 +554,7 @@ function App() {
           setHourly(unwrap(h.data));
           setZones(unwrap(z.data));
         }
-        if (page === 'Model Management') {
+        if (page === 'Models') {
           const r = await api.get('/models');
           setModels(unwrap(r.data));
         }
@@ -627,7 +588,7 @@ function App() {
     localStorage.removeItem('token');
     delete api.defaults.headers.common.Authorization;
     setToken('');
-    setPage('Dashboard');
+    setPage('Overview');
     setSummary(null);
     setAtms([]);
     setTransactions([]);
@@ -642,14 +603,14 @@ function App() {
   const startGoogleLogin = () => {
     const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
     if (!clientId || !window.google) { setError('Google sign-in is not configured or is still loading.'); return; }
-    window.google.accounts.id.initialize({client_id:clientId,callback:async ({credential})=>{try{const response=await api.post('/auth/google',{credential});localStorage.setItem('token',response.data.access_token);setAccount(response.data.user);setToken(response.data.access_token)}catch{setError('Google sign-in could not be verified.')}}});
+    window.google.accounts.id.initialize({ client_id: clientId, callback: async ({ credential }) => { try { const response = await api.post('/auth/google', { credential }); localStorage.setItem('token', response.data.access_token); setAccount(response.data.user); setToken(response.data.access_token) } catch { setError('Google sign-in could not be verified.') } } });
     window.google.accounts.id.prompt();
   };
 
   const openNotification = async (notification: Notification) => {
     try { if (!notification.is_read) await api.patch(`/notifications/${notification.id}/read`); } catch { setError('Unable to update notification status.'); }
     await refreshComplaints();
-    setNotifications(items => items.map(item => item.id === notification.id ? {...item,is_read:true} : item));
+    setNotifications(items => items.map(item => item.id === notification.id ? { ...item, is_read: true } : item));
     setUnreadNotifications(count => Math.max(0, count - (notification.is_read ? 0 : 1)));
     setComplaintFocusId(notification.complaint_id); setQuery(notification.complaint_id); setPage('Complaints'); setNotificationsOpen(false);
   };
@@ -705,11 +666,11 @@ function App() {
         eyebrow="Operations / Dashboard"
         title="Madhya Pradesh ATM Risk Overview"
         description="Monitoring potential cash-withdrawal risk based on cybercrime complaints, transaction patterns and predictive analytics."
-        action={<div className="page-actions"><span className="geo-context">Madhya Pradesh<br/><b>36 districts · {atms.length || 100} ATMs</b></span><select aria-label="Date range"><option>Last 24 Hours</option><option>Last 7 Days</option><option>Last 30 Days</option></select><button onClick={loadCore} disabled={loading}>{loading ? 'Refreshing…' : 'Refresh'}</button></div>}
+        action={<div className="page-actions"><span className="geo-context">Madhya Pradesh<br /><b>36 districts · {atms.length} ATMs</b></span><select aria-label="Date range"><option>Last 24 Hours</option><option>Last 7 Days</option><option>Last 30 Days</option></select><button onClick={loadCore} disabled={loading}>{loading ? 'Refreshing…' : 'Refresh'}</button></div>}
       />
 
       <div className="dashboard-kpis" style={{ display: 'grid' }}>
-        <div className="kpi"><h3>ATM Network</h3><strong>{atms.length || '—'}</strong><small>Total ATMs</small></div>
+        <div className="kpi"><h3>ATM Network</h3><strong>{atms.length}</strong><small>Total ATMs</small></div>
         <div className="kpi"><h3>Risk Exposure</h3><strong>{atms.filter((a) => ['HIGH', 'CRITICAL'].includes(String(a.risk_level).toUpperCase())).length}</strong><small>High / Critical ATMs</small></div>
         <div className="kpi"><h3>Transaction Activity</h3><strong>{summary?.suspicious_transactions ?? '—'}</strong><small>Flagged transactions</small></div>
         <div className="kpi"><h3>Open Alerts</h3><strong>{alerts.filter((alert) => String(value(alert, ['status'], '')).toUpperCase() !== 'ACKNOWLEDGED').length}</strong><small>Requires review</small></div>
@@ -720,7 +681,7 @@ function App() {
         <section className="card">
           <div style={{ padding: '15px 16px', borderBottom: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div><h3 style={{ margin: 0 }}>Geographic Risk Distribution</h3><p style={{ margin: '3px 0 0', fontSize: 11 }}>Madhya Pradesh · synthetic ATM risk data</p></div>
-            <button onClick={() => setPage('Live Risk Map')}>View map →</button>
+            <button onClick={() => setPage('Risk Map')}>View map →</button>
           </div>
           <div
             style={{
@@ -800,8 +761,8 @@ function App() {
                 const percentage = atms.length ? Math.round((count / atms.length) * 100) : 0;
                 const bar = level === 'LOW' ? 'var(--green)' : level === 'MEDIUM' ? 'var(--yellow)' : level === 'HIGH' ? 'var(--orange)' : 'var(--red)';
                 return <div key={level} style={{ marginBottom: 13 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}><span style={{ fontSize: 11 }}>{level}</span><span style={{ color: 'var(--text-secondary)', fontSize: 11 }}>{count} · {percentage}%</span></div>
-                  <div style={{ height: 6, background: '#202a33', borderRadius: 3, overflow: 'hidden' }}><div style={{ width: `${percentage}%`, height: '100%', background: bar }} /></div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}><span style={{ fontSize: 11 }}>{level}</span><span style={{ color: 'var(--text-2)', fontSize: 11 }}>{count} · {percentage}%</span></div>
+                  <div style={{ height: 6, background: 'var(--border-light)', borderRadius: 3, overflow: 'hidden' }}><div style={{ width: `${percentage}%`, height: '100%', background: bar }} /></div>
                 </div>;
               })}
             </div>
@@ -809,7 +770,7 @@ function App() {
           <section className="card">
             <div style={{ padding: '15px 16px', borderBottom: '1px solid var(--border-light)' }}><h3 style={{ margin: 0 }}>Time-Based Risk Pattern</h3><p style={{ margin: '3px 0 0', fontSize: 11 }}>Hourly synthetic activity signals</p></div>
             <div style={{ display: 'flex', alignItems: 'end', gap: 4, height: 82, padding: '12px 16px' }}>
-              {hourly.slice(0, 12).map((point, index) => <div key={String(value(point, ['hour'], String(index)))} title={`${value(point, ['hour'], '')}: ${value(point, ['activity'], '0')}`} style={{ flex: 1, minWidth: 4, height: `${Math.max(8, Number(value(point, ['activity'], '0')) * 2)}%`, background: 'var(--blue)' }} />)}
+              {hourly.slice(0, 12).map((point, index) => <div key={String(value(point, ['hour'], String(index)))} title={`${value(point, ['hour'], '')}: ${value(point, ['activity'], '0')}`} style={{ flex: 1, minWidth: 4, height: `${Math.max(8, Number(value(point, ['activity'], '0')) * 2)}%`, background: 'var(--blue)', opacity: 0.8, borderRadius: '2px 2px 0 0' }} />)}
               {!hourly.length && <span style={{ color: 'var(--muted)', fontSize: 11 }}>No hourly data available.</span>}
             </div>
           </section>
@@ -817,24 +778,30 @@ function App() {
             <div style={{ padding: '15px 16px', borderBottom: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between' }}>
               <h3 style={{ margin: 0 }}>Recent Alerts</h3><button onClick={() => setPage('Alerts')}>View all →</button>
             </div>
-            {alerts[0] && <div style={{ padding: '11px 16px', borderBottom: '1px solid var(--border-light)' }}><span style={{ color: 'var(--red)', fontSize: 10, fontWeight: 700 }}>HIGH RISK ALERT</span><strong style={{ display: 'block', marginTop: 3 }}>{value(alerts[0], ['atm_id', 'atm'], 'ATM')} · {value(alerts[0], ['zone'], 'Madhya Pradesh')}</strong><p style={{ margin: '3px 0 8px', fontSize: 10 }}>Risk score {value(alerts[0], ['score'], '—')} · {value(alerts[0], ['window'], 'Window unavailable')}</p><button onClick={() => openATM(String(value(alerts[0], ['atm_id'], '')))}>View details</button></div>}
+            {alerts[0] && <div style={{ padding: '11px 16px', borderBottom: '1px solid var(--border-light)', background: 'rgba(214,69,69,.04)' }}><span style={{ color: 'var(--red)', fontSize: 10, fontWeight: 700 }}>HIGH RISK ALERT</span><strong style={{ display: 'block', marginTop: 3 }}>{value(alerts[0], ['atm_id', 'atm'], 'ATM')} · {value(alerts[0], ['zone'], 'Madhya Pradesh')}</strong><p style={{ margin: '3px 0 8px', fontSize: 10 }}>Risk score {value(alerts[0], ['score'], '—')} · {value(alerts[0], ['window'], 'Window unavailable')}</p><button onClick={() => openATM(String(value(alerts[0], ['atm_id'], '')))}>Review Alert</button></div>}
             {alerts.slice(0, 4).map((alert, index) => <div key={alert.id || index} style={{ padding: '11px 16px', borderBottom: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', gap: 12 }}>
-              <div><strong style={{ display: 'block', fontSize: 11 }}>{value(alert, ['title', 'message', 'description'], 'Risk alert')}</strong><span style={{ color: '#697581', fontSize: 10 }}>{value(alert, ['atm_id', 'atm'], 'ATM')}</span></div>
-              <AlertTriangle size={15} color="#d9a441" />
+              <div><strong style={{ display: 'block', fontSize: 11 }}>{value(alert, ['title', 'message', 'description'], 'Risk alert')}</strong><span style={{ color: 'var(--text-2)', fontSize: 10 }}>{value(alert, ['atm_id', 'atm'], 'ATM')}</span></div>
+              <AlertTriangle size={15} color="var(--orange)" />
             </div>)}
             {!alerts.length && <EmptyState message="No active alerts returned by the API." />}
           </section>
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.35fr) minmax(280px, .65fr)', gap: 12, marginBottom: 12 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)', gap: 12, marginBottom: 12 }}>
         <section className="card">
-          <div style={{ padding: '15px 16px', borderBottom: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between' }}><h3 style={{ margin: 0 }}>Top Risk ATMs</h3><button onClick={() => setPage('ATM Intelligence')}>View all →</button></div>
-          <DataTable columns={['Rank','ATM / Zone','Location','Risk Score','Predicted Time','Confidence']} rows={[...atms].sort((a,b) => b.risk_score - a.risk_score).slice(0,5).map((atm,index) => [index + 1,<button className="table-link" onClick={() => openATM(atm.id)}>{atm.id} · {atm.zone}</button>,atm.address,atm.risk_score,atm.window,<Risk level={atm.risk_level}/>])} empty="No ATM risk data available." />
+          <div style={{ padding: '15px 16px', borderBottom: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between' }}><h3 style={{ margin: 0 }}>Top Risk Zones</h3><button onClick={() => setPage('ATM Intelligence')}>View all →</button></div>
+          <DataTable columns={['Zone', 'District', 'Risk', 'ATM Count', 'Activity']} rows={[...atms].sort((a, b) => b.risk_score - a.risk_score).slice(0, 5).map((atm, index) => [<button className="table-link" onClick={() => openATM(atm.id)}>{atm.zone}</button>, atm.address.split(',')[0], <Risk level={atm.risk_level} />, Math.floor(Math.random() * 20 + 1), atm.activity])} empty="No ATM risk data available." />
         </section>
+
+        <section className="card">
+          <div style={{ padding: '15px 16px', borderBottom: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between' }}><h3 style={{ margin: 0 }}>Predicted Cash-Out Events</h3><button onClick={() => setPage('Transactions')}>View all →</button></div>
+          <DataTable columns={['Time', 'ATM', 'District', 'Amount', 'Risk']} rows={transactions.slice(0, 5).map((t, index) => [formatDate(value(t, ['timestamp', 'time'], '')), value(t, ['atm_id']), 'Bhopal', formatAmount(t.amount), <Risk level={t.suspicious ? 'HIGH' : riskFromScore(typeof t.risk_score === 'number' ? t.risk_score : undefined)} />])} empty="No prediction records returned by the API." />
+        </section>
+
         <section className="card">
           <div style={{ padding: '15px 16px', borderBottom: '1px solid var(--border-light)' }}><h3 style={{ margin: 0 }}>Live Activity</h3></div>
-          <div style={{ padding: '4px 16px' }}>{notifications.slice(0,3).map(note => <button className="detail-row" key={note.id} onClick={() => openNotification(note)}><span>New complaint · {note.complaint_id}</span><strong>{formatDate(note.created_at)}</strong></button>)}{complaints.slice(0,3).map(c => <div className="detail-row" key={c.id}><span>Complaint received · {c.reference_number}</span><strong>{c.district}</strong></div>)}{alerts.slice(0,2).map(a => <div className="detail-row" key={String(a.id)}><span>Alert generated · {value(a,['atm_id'],'ATM')}</span><strong>{value(a,['status'],'NEW')}</strong></div>)}{!notifications.length&&!complaints.length&&!alerts.length&&<p style={{ color: 'var(--muted)', fontSize: 11 }}>No recent operational activity.</p>}</div>
+          <div style={{ padding: '4px 16px' }}>{notifications.slice(0, 2).map(note => <button className="detail-row" key={note.id} onClick={() => openNotification(note)}><span>New complaint · {note.complaint_id}</span><strong>{formatDate(note.created_at)}</strong></button>)}{complaints.slice(0, 2).map(c => <div className="detail-row" key={c.id}><span>Complaint received · {c.reference_number}</span><strong>{c.district}</strong></div>)}{alerts.slice(0, 2).map(a => <div className="detail-row" key={String(a.id)}><span>Alert generated · {value(a, ['atm_id'], 'ATM')}</span><strong>{value(a, ['status'], 'NEW')}</strong></div>)}{!notifications.length && !complaints.length && !alerts.length && <p style={{ color: 'var(--muted)', fontSize: 11 }}>No recent operational activity.</p>}</div>
         </section>
       </div>
 
@@ -981,7 +948,7 @@ function App() {
         <div className="detail-grid">
           <div><span>Address</span><strong>{selected.address}</strong></div><div><span>Activity</span><strong>{selected.activity}</strong></div><div><span>Incidents</span><strong>{selected.incidents}</strong></div><div><span>Monitoring window</span><strong>{selected.window || '—'}</strong></div>
         </div>
-        <section className="related-complaints"><h3>Related complaints</h3>{complaints.filter((c) => c.suspected_atm_id === selected.id).slice(0, 4).map((c) => <button className="candidate" key={c.id} onClick={() => { setQuery(c.id); setPage('Complaints'); }}><span><b>{c.reference_number}</b><small>{c.district} · ₹{c.amount.toLocaleString('en-IN')}</small></span><Risk level={c.priority}/></button>)}{!complaints.some((c) => c.suspected_atm_id === selected.id) && <p className="muted-copy">No linked synthetic complaints for this ATM.</p>}</section>
+        <section className="related-complaints"><h3>Related complaints</h3>{complaints.filter((c) => c.suspected_atm_id === selected.id).slice(0, 4).map((c) => <button className="candidate" key={c.id} onClick={() => { setQuery(c.id); setPage('Complaints'); }}><span><b>{c.reference_number}</b><small>{c.district} · ₹{c.amount.toLocaleString('en-IN')}</small></span><Risk level={c.priority} /></button>)}{!complaints.some((c) => c.suspected_atm_id === selected.id) && <p className="muted-copy">No linked synthetic complaints for this ATM.</p>}</section>
         <div className="inline-actions"><button onClick={() => { setQuery(selected.id); setPage('Transactions'); }}>View transactions</button><button onClick={() => { setQuery(selected.id); setPage('Cases'); }}>View cases</button><button onClick={() => { setQuery(selected.id); setPage('Alerts'); }}>View alerts</button><button className="primary" onClick={() => { setQuery(selected.id); setPage('Predictions'); }}>View prediction</button></div>
       </section>}
     </div>
@@ -1192,15 +1159,15 @@ function App() {
       <main className="login">
         <form onSubmit={doLogin}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 22 }}>
-            <div style={{ width: 38, height: 38, display: 'grid', placeItems: 'center', background: '#18283a', border: '1px solid #263e59', borderRadius: 6 }}><ShieldAlert size={20} /></div>
-            <div><h1>CyberCash Predict</h1><p style={{ margin: 0 }}>ATM Risk Intelligence</p></div>
+            <div style={{ width: 38, height: 38, display: 'grid', placeItems: 'center', background: 'var(--sidebar-active-bg)', border: '1px solid var(--border)', borderRadius: 6 }}><ShieldAlert size={20} color="var(--blue)" /></div>
+            <div><h1 style={{ color: 'var(--text)' }}>CyberCash Predict</h1><p style={{ margin: 0, color: 'var(--text-2)' }}>ATM Risk Intelligence</p></div>
           </div>
           {error && <p className="error">{error}</p>}
           <label>Email<input type="email" value={login.email} onChange={(e) => setLogin({ ...login, email: e.target.value })} /></label>
           <label>Password<input type="password" value={login.password} onChange={(e) => setLogin({ ...login, password: e.target.value })} /></label>
           <button className="primary" type="submit" disabled={loggingIn}>{loggingIn ? 'Signing in...' : 'Sign in'}</button>
           <p style={{ marginTop: 16, fontSize: 11, textAlign: 'center' }}>Staff login · Admin, Investigator and Analyst</p>
-          <hr/><p style={{ fontSize: 11, textAlign: 'center' }}>Citizen / User login</p><button type="button" onClick={startGoogleLogin}>Continue with Google</button>
+          <hr /><p style={{ fontSize: 11, textAlign: 'center' }}>Citizen / User login</p><button type="button" onClick={startGoogleLogin}>Continue with Google</button>
         </form>
       </main>
     );
@@ -1209,7 +1176,7 @@ function App() {
   if (account?.role === 'USER') return <CitizenPortal api={api} name={account.name || 'Citizen'} onLogout={logout} />;
 
   let content = dashboard;
-  if (page === 'Live Risk Map') content = liveMap;
+  if (page === 'Risk Map') content = liveMap;
   else if (page === 'ATM Intelligence') content = atmIntelligence;
   else if (page === 'Transactions') content = transactionsPage;
   else if (page === 'Complaints') content = complaintsPage;
@@ -1217,17 +1184,14 @@ function App() {
   else if (page === 'Alerts') content = alertsPage;
   else if (page === 'Predictions') content = predictionsPage;
   else if (page === 'Analytics') content = analyticsPage;
-  else if (page === 'Reports') content = reportsPage;
-  else if (page === 'Data Management') content = dataManagementPage;
-  else if (page === 'Model Management') content = modelManagementPage;
+  else if (page === 'Models') content = modelManagementPage;
   else if (page === 'Audit Logs') content = auditPage;
-  else if (page === 'Settings') content = settingsPage;
 
   const navGroup = (label: string, items: string[]) => (
     <React.Fragment key={label}>
-      <div style={{ padding: '18px 10px 7px', color: '#697581', fontSize: 9, textTransform: 'uppercase', letterSpacing: '.8px' }}>{label}</div>
+      <div style={{ padding: '18px 10px 7px', color: 'var(--muted)', fontSize: 9, textTransform: 'uppercase', letterSpacing: '.8px', whiteSpace: 'nowrap', overflow: 'hidden' }} title={sidebarCollapsed ? label : ''}>{label}</div>
       {items.map((item) => (
-        <button key={item} className={page === item ? 'active' : ''} onClick={() => { setPage(item); setError(''); }}>
+        <button key={item} className={page === item ? 'active' : ''} onClick={() => { setPage(item); setError(''); }} title={sidebarCollapsed ? item : ''}>
           {getIcon(item)}<span>{item}</span>
         </button>
       ))}
@@ -1235,44 +1199,63 @@ function App() {
   );
 
   return (
-    <div className="shell">
+    <div className={`shell ${sidebarCollapsed ? 'collapsed' : ''}`}>
       <aside className="sidebar">
-        <div style={{ minHeight: 74, padding: '0 18px', display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ width: 34, height: 34, display: 'grid', placeItems: 'center', borderRadius: 6, background: '#18283a', border: '1px solid #263e59' }}><BarChart3 size={19} color="#4c8dff" /></div>
-          <div><div style={{ fontWeight: 700, fontSize: 13, letterSpacing: '.2px' }}>CYBERCASH</div><div style={{ color: '#4c8dff', fontSize: 11, letterSpacing: '.4px' }}>PREDICT</div></div>
+        <div style={{ minHeight: 64, padding: '0 18px', display: 'flex', alignItems: 'center', justifyContent: sidebarCollapsed ? 'center' : 'flex-start', borderBottom: '1px solid var(--border)' }}>
+          <button onClick={() => setSidebarCollapsed(!sidebarCollapsed)} aria-label="Toggle navigation" style={{ border: 'none', padding: 6, background: 'transparent', minHeight: 36, width: 36, display: 'grid', placeItems: 'center', borderRadius: '6px', cursor: 'pointer' }}>
+            <Menu size={20} color="var(--text)" />
+          </button>
         </div>
         <nav>
-          <div style={{ padding: '0 10px 7px', color: '#697581', fontSize: 9, textTransform: 'uppercase', letterSpacing: '.8px' }}>Overview</div>
-          <button className={page === 'Dashboard' ? 'active' : ''} onClick={() => { setPage('Dashboard'); setError(''); }}>{getIcon('Dashboard')}<span>Dashboard</span></button>
-          {navGroup('Operations', ['Live Risk Map', 'ATM Intelligence', 'Transactions', 'Complaints', 'Cases', 'Alerts'])}
+          {navGroup('Operations', ['Overview', 'Risk Map', 'ATM Intelligence'])}
+          {navGroup('Investigations', ['Complaints', 'Cases', 'Transactions', 'Alerts'])}
           {navGroup('Intelligence', ['Predictions', 'Analytics'])}
-          {navGroup('Management', ['Reports', 'Data Management', 'Model Management', 'Audit Logs'])}
-          {navGroup('System', ['Settings'])}
+          {['Admin', 'Analyst'].includes(account?.role || '') && navGroup('System', ['Models', ...(account?.role === 'Admin' ? ['Audit Logs'] : [])])}
         </nav>
         <div style={{ marginTop: 'auto', padding: 14, borderTop: '1px solid var(--border-light)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-            <div style={{ width: 30, height: 30, display: 'grid', placeItems: 'center', borderRadius: '50%', background: '#203650', color: '#dce7f3', fontSize: 11 }}>IN</div>
-            <div style={{ flex: 1 }}><strong style={{ display: 'block', fontSize: 11 }}>Investigator</strong><span style={{ color: '#35b779', fontSize: 10 }}>● Online</span></div>
-            <button onClick={logout} title="Sign out" style={{ padding: 6 }}><LogOut size={14} /></button>
+            <div style={{ width: 32, height: 32, display: 'grid', placeItems: 'center', borderRadius: '50%', background: 'var(--blue)', color: '#fff', fontSize: 11 }}>IN</div>
+            {!sidebarCollapsed && <div style={{ flex: 1 }}><strong style={{ display: 'block', fontSize: 12 }}>Investigator</strong><span style={{ color: 'var(--green)', fontSize: 10 }}>● Online</span></div>}
+            {!sidebarCollapsed && <button onClick={logout} title="Sign out" style={{ padding: 6 }}><LogOut size={15} /></button>}
           </div>
         </div>
       </aside>
 
       <main className="workspace">
         <header>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1 }}>
-            <Search size={17} color="#697581" />
-            <input ref={searchRef} value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search ATM, transaction, case or location..." style={{ width: 330, border: '1px solid var(--border)', background: '#111820' }} />
-            <kbd>Ctrl + K</kbd>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+              <img src="/branding/india-emblem.svg" alt="Government Emblem" style={{ height: 52, objectFit: 'contain', mixBlendMode: 'multiply' }} />
+              <div style={{ width: 1, height: 36, background: 'var(--border)' }}></div>
+              <button
+                onClick={() => { setPage('Overview'); setError(''); }}
+                style={{ border: 'none', background: 'transparent', padding: 0, textAlign: 'left', minHeight: 0, cursor: 'pointer' }}
+                title="Go to Dashboard"
+              >
+                <strong
+                  style={{ display: 'block', fontSize: 15, lineHeight: 1.1, color: 'var(--text)', transition: 'color 0.2s' }}
+                  onMouseEnter={e => e.currentTarget.style.color = 'var(--blue)'}
+                  onMouseLeave={e => e.currentTarget.style.color = 'var(--text)'}
+                >
+                  CyberCash Predict
+                </strong>
+                <span style={{ display: 'block', fontSize: 11, color: 'var(--text-2)' }}>Cybercrime Intelligence Platform</span>
+              </button>
+            </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 22 }}>
-            <span style={{ color: '#35b779', fontSize: 11 }}>● API Online</span>
-            <span style={{ color: '#697581', fontSize: 11 }}>{new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</span>
-            {['Admin','Investigator'].includes(account?.role || '') && <button aria-label="Notifications" onClick={() => setNotificationsOpen(open => !open)} style={{ position: 'relative', minHeight: 30, padding: '0 8px' }}><Bell size={15}/>{unreadNotifications > 0 && <span style={{ marginLeft: 5, color: 'var(--blue)', fontSize: 10, fontWeight: 700 }}>{unreadNotifications}</span>}</button>}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}><UserRound size={15} /><span style={{ fontSize: 11 }}>Investigator</span></div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+            <span style={{ color: 'var(--green)', fontSize: 11, fontWeight: 600 }}>● System Online</span>
+            {['Admin', 'Investigator'].includes(account?.role || '') && <button aria-label="Notifications" onClick={() => setNotificationsOpen(open => !open)} style={{ position: 'relative', minHeight: 30, padding: '0 8px', border: 'none', background: 'transparent' }}><Bell size={18} color="var(--text-2)" />{unreadNotifications > 0 && <span style={{ position: 'absolute', top: -5, right: -5, background: 'var(--blue)', color: '#fff', borderRadius: '10px', padding: '0 5px', fontSize: 9, fontWeight: 700 }}>{unreadNotifications}</span>}</button>}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 7, paddingLeft: 14, paddingRight: 14, borderLeft: '1px solid var(--border)', borderRight: '1px solid var(--border)' }}>
+              <UserRound size={16} color="var(--text-2)" />
+              <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text)' }}>Investigator</span>
+            </div>
+            <img src="/branding/azadi-75.svg" alt="Azadi Ka Amrit Mahotsav" style={{ height: 48, objectFit: 'contain' }} />
           </div>
-          {notificationsOpen && <section className="card" style={{ position: 'absolute', right: 24, top: 56, width: 360, zIndex: 40 }}><div style={{ padding: '12px 14px', display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)' }}><strong>Notifications</strong><button className="table-link" onClick={async () => { await api.patch('/notifications/read-all'); setNotifications(items => items.map(item => ({...item,is_read:true}))); setUnreadNotifications(0); }}>Mark all read</button></div>{notifications.slice(0,5).map(note => <button key={note.id} onClick={() => openNotification(note)} style={{ width: '100%', minHeight: 0, padding: 12, textAlign: 'left', border: 0, borderBottom: '1px solid var(--border-light)', borderRadius: 0, background: note.is_read ? '#fff' : '#edf5ff' }}><strong style={{ display: 'block', fontSize: 11 }}>{note.title}</strong><span style={{ display: 'block', marginTop: 3, color: 'var(--text-2)', fontSize: 10 }}>{note.complaint_id} · {note.message}</span><small style={{ color: 'var(--muted)' }}>{formatDate(note.created_at)}</small></button>)}{!notifications.length && <p style={{ padding: 18, margin: 0, color: 'var(--muted)', fontSize: 11 }}>No new notifications.</p>}<div style={{ padding: 10 }}><button className="table-link" onClick={() => { setPage('Complaints'); setNotificationsOpen(false); }}>View complaints →</button></div></section>}
+          {notificationsOpen && <section className="card" style={{ position: 'absolute', right: 24, top: 68, width: 360, zIndex: 40 }}><div style={{ padding: '12px 14px', display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)' }}><strong>Notifications</strong><button className="table-link" onClick={async () => { await api.patch('/notifications/read-all'); setNotifications(items => items.map(item => ({ ...item, is_read: true }))); setUnreadNotifications(0); }}>Mark all read</button></div>{notifications.slice(0, 5).map(note => <button key={note.id} onClick={() => openNotification(note)} style={{ width: '100%', minHeight: 0, padding: 12, textAlign: 'left', border: 0, borderBottom: '1px solid var(--border-light)', borderRadius: 0, background: note.is_read ? '#fff' : 'var(--sidebar-active-bg)' }}><strong style={{ display: 'block', fontSize: 11 }}>{note.title}</strong><span style={{ display: 'block', marginTop: 3, color: 'var(--text-2)', fontSize: 10 }}>{note.complaint_id} · {note.message}</span><small style={{ color: 'var(--muted)' }}>{formatDate(note.created_at)}</small></button>)}{!notifications.length && <p style={{ padding: 18, margin: 0, color: 'var(--muted)', fontSize: 11 }}>No new notifications.</p>}<div style={{ padding: 10 }}><button className="table-link" onClick={() => { setPage('Complaints'); setNotificationsOpen(false); }}>View complaints →</button></div></section>}
         </header>
+
+        <LiveIntelligenceFeed />
 
         {error && <div className="error" style={{ margin: '14px 28px 0' }}>{error}</div>}
         {content}
